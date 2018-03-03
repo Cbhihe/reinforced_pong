@@ -18,4 +18,3 @@ We can sort them by the type of problem they try to solve:
     * Ranking
     * Reinforcement
 
-
