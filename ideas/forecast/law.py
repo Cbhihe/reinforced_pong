@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Use a "reduced" version with only the last 10^6 entries
-data = np.genfromtxt('coinbaseUSD-1M.csv' , delimiter=',')
+data = np.genfromtxt('coinbaseUSD-1M.csv.gz' , delimiter=',')
 
 t = data[:,0] # Time in UNIX timestamp
 y = data[:,1] # The value in USD of 1 BTC
