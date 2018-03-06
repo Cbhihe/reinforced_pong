@@ -11,8 +11,8 @@ the complaint, etc.
 
 
 Year of availability: Data is available in annual batches from 2011 to 2015 (both included). 
-Data is not included here for your persusal because of file size limitation on GitHub. It is
-however readily available at:
+Data is not included here for your perusal because of upload file size limitation on GitHub. 
+It is however readily available at:
 https://nycopendata.socrata.com/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9
 
 
