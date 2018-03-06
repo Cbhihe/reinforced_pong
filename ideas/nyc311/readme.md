@@ -4,17 +4,17 @@
 
 ***Urban complaint calls to 311 in NYC:***
 
-Available at: https://nycopendata.socrata.com/Social-Services/311-Service-Requests-from-2010-
-to-Present/erm2-nwe9
-
-
 Each year, starting in 2011, between 70,000 and 120,000 calls to 311 are received by NYC's 
 public office and logged with a slew of metadata attributes. Calls are registered with 50+ 
 attributes, describing time of the year, gender of caller, exact geolocation pertaining to 
 the complaint, etc.
 
+
 Year of availability: Data is available in annual batches from 2011 to 2015 (both included). 
-Included here for your persusal is the zipped data for 2015.
+Data is not included here for your persusal because of file size limitation on GitHub. It is
+however readily available at:
+https://nycopendata.socrata.com/Social-Services/311-Service-Requests-from-2010-to-Present/erm2-nwe9
+
 
 Data usage: All the data is public, regulated by the terms of use of data and information 
 available on the web page: http://www1.nyc.gov.  The terms and conditions of use are included 
@@ -32,8 +32,8 @@ which are selectable by the "extension" (.json, etc.) on the API endpoint or thr
 
 Every dataset entry is labeled.  A rapid inspection shows that "NA" (non-assigned) values exist but in small proportion, making it possible to carry out routine imputation or suppression without incurring in issues of bias or unreliability.
 
-In very broad, non-exhaustive terms, it would be interesting to study:
 
+In very broad, non-exhaustive terms, it would be interesting to study:
 - Clasification
 - Clustering of like- or similar complaints
 - Geo-correlative study (GPS data for each complaint is available) for instance with SAT scores 
