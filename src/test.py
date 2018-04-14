@@ -9,8 +9,8 @@ os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 BOARD_MARGIN_X = 20
 
-PADDLE_MARGIN_X = 20
-PADDLE_MARGIN_Y = 10
+PADDLE_MARGIN_X = 50
+PADDLE_MARGIN_Y = 30
 
 PADDLE_WIDTH = 10
 PADDLE_HEIGHT = 100
@@ -43,7 +43,7 @@ class Paddle(Sprite):
 
 		wboard, hboard = self.board_size
 		wsurface = PADDLE_WIDTH
-		hsurface = hboard - hmargin*2
+		hsurface = hboard - vmargin*2
 
 		self.surf_size = (wsurface, hsurface)
 
@@ -90,7 +90,7 @@ class Paddle(Sprite):
 		self.paddle_rect.topleft = (x, y)
 
 		# Clear previos paddle
-		self.surf.fill((0,0,0))
+		self.surf.fill((100,0,0))
 
 		# Place the paddle into the paddle surface, in the correct position
 		self.surf.blit(self.paddle, self.paddle_rect)
@@ -111,4 +111,4 @@ while True:
 	pygame.display.update()
 	pygame.display.flip()
 
-	clock.tick(50)
+	clock.tick(60)
