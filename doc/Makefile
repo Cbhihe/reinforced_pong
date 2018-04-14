@@ -1,4 +1,4 @@
-PDFS=proposal.pdf
+PDFS=proposal.pdf doc.pdf
 
 all: $(PDFS)
 
