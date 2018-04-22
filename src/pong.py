@@ -1,39 +1,33 @@
 # Encoding: utf-8
 
-import pygame, os, time
+import pygame
 from pygame.sprite import Sprite, collide_rect
 from pygame import Rect,Surface
 
-# Center window
-os.environ['SDL_VIDEO_CENTERED'] = '1'
+from control import *
+
 
 BOARD_MARGIN_X = 20
-
 PADDLE_MARGIN_X = 50
 PADDLE_MARGIN_Y = 10
-
 PADDLE_WIDTH = 10
 PADDLE_HEIGHT = 100
-
 BALL_DIAMETER = 10
 
-DRAW = True
-FPS = 60
-
 class Board(Sprite):
-	def __init__(self, screen, size):
+	def __init__(self, screen, size, cl, cr):
 		Sprite.__init__(self)
 		self.screen = screen
 		self.surf = Surface(size)
 		self.rect = self.surf.get_rect()
 	
-		self.pl = Paddle(self.surf, PADDLE_MARGIN_X, PADDLE_MARGIN_Y, 'left')
-		self.pr = Paddle(self.surf, PADDLE_MARGIN_X, PADDLE_MARGIN_Y, 'right')
+		self.pl = Paddle(self, PADDLE_MARGIN_X, PADDLE_MARGIN_Y, 'left')
+		self.pr = Paddle(self, PADDLE_MARGIN_X, PADDLE_MARGIN_Y, 'right')
 
 		self.ball = Ball(self, BALL_DIAMETER)
 
-		self.cl = PaddleControllerFollower(self, self.pl, self.ball)
-		self.cr = PaddleControllerKeyboard(self, self.pr, self.ball)
+		self.cl = cl(self, self.pl, self.ball)
+		self.cr = cr(self, self.pr, self.ball)
 
 	def draw_net(self):
 		rect = self.surf.get_rect()
@@ -65,53 +59,11 @@ class Board(Sprite):
 		self.screen.blit(self.surf, dest=(0,0))
 
 
-class PaddleControllerFollower:
-	def __init__(self, board, paddle, ball):
-		self.board = board
-		self.paddle = paddle
-		self.ball = ball
-
-	def update(self):
-
-		bx,by = self.ball.position
-		py = self.paddle.y
-
-		if py < by:
-			vy = self.paddle.top_speed
-		elif py > by:
-			vy = -self.paddle.top_speed
-		else:
-			vy = 0
-	
-		self.paddle.set_speed(vy)
-
-class PaddleControllerKeyboard:
-	def __init__(self, board, paddle, ball):
-		self.board = board
-		self.paddle = paddle
-		self.ball = ball
-
-	def update(self):
-
-		vy = self.paddle.vy
-		events = pygame.event.get()
-		for event in events:
-			if event.type == pygame.KEYDOWN:
-				if event.key == pygame.K_UP:
-					vy = -self.paddle.top_speed
-				if event.key == pygame.K_DOWN:
-					vy = self.paddle.top_speed
-			elif event.type == pygame.KEYUP:
-				vy = 0
-	
-		self.paddle.set_speed(vy)
-
-
 class Paddle(Sprite):
 	def __init__(self, board, hmargin, vmargin, side):
 		Sprite.__init__(self)
 		self.board = board
-		self.board_size = board.get_size()
+		self.board_size = board.surf.get_size()
 		self.margin = (hmargin, vmargin)
 
 		self.paddle_size = (PADDLE_WIDTH, PADDLE_HEIGHT)
@@ -169,7 +121,7 @@ class Paddle(Sprite):
 
 	def draw(self):
 		# Draw the paddle in the rect position
-		self.board.fill((255,255,255), self.rect)
+		self.board.surf.fill((255,255,255), self.rect)
 
 
 class Ball(Sprite):
@@ -235,34 +187,3 @@ class Ball(Sprite):
 	def draw(self):
 		self.board.surf.blit(self.ball, self.rect)
 
-
-pygame.init()
-screen = pygame.display.set_mode((320*2, 240*2))
-
-size = (320*2, 240*2)
-b = Board(screen, size)
-clock = pygame.time.Clock()
-
-frame = 1
-delay = 10000
-
-tic = time.time()
-while True:
-	b.update()
-
-	if DRAW:
-		b.draw()
-		pygame.display.update()
-		pygame.display.flip()
-		clock.tick(FPS)
-		delay = 200
-
-	if not frame % delay:
-		toc = time.time()
-		fps = frame/(toc-tic)
-		#print("FPS = {:.2f}".format(clock.get_fps()))
-		print("Real fps = {:.2f}".format(fps))
-
-	frame += 1
-
-	
