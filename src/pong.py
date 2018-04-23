@@ -75,8 +75,8 @@ class Board(Sprite):
 		self.cl.update()
 		self.cr.update()
 
-		self.pl.update()
-		self.pr.update()
+		#self.pl.update()
+		#self.pr.update()
 
 		if self.restart:
 			self.ball.restart()
@@ -95,6 +95,8 @@ class Board(Sprite):
 		self.pl.draw()
 		self.pr.draw()
 
+		self.cl.draw()
+		self.cr.draw()
 
 		# Finally blit into the screen
 		self.screen.blit(self.surf, dest=(0,0))
@@ -142,6 +144,7 @@ class Paddle(Sprite):
 		self.vy = 0.0
 
 		self.top_speed = 8.0
+		self.status = None
 
 	def set_speed(self, vy):
 		if vy > self.top_speed:
@@ -171,24 +174,21 @@ class Paddle(Sprite):
 		else:
 			self.crect.topleft = self.rect.topleft
 
-
 		self.y = y
 
-	def status_ball(self, ball_rect):
+	def status_ball(self, ball):
+		ball_rect = ball.rect
 		bx, by = ball_rect.center
 		px, py = self.crect.center
 
 		if self.crect.colliderect(ball_rect):
-			return 'collision'
-
-		if self.side == 'left':
-			if bx < px:
-				return 'lost'
-		if self.side == 'right':
-			if bx > px:
-				return 'lost'
-		
-		return None
+			self.status = 'collision'
+		elif self.side == 'left' and bx < px:
+			self.status = 'lost'
+		elif self.side == 'right' and bx > px:
+			self.status = 'lost'
+		else:
+			self.status = None
 
 	def update(self):
 		self.set_position(self.y + self.vy)
@@ -197,7 +197,7 @@ class Paddle(Sprite):
 		# Draw the paddle in the rect position
 		g = 200
 		self.board.surf.fill((g,g,g), self.rect)
-		self.board.surf.fill((255,127,127), self.crect)
+		#self.board.surf.fill((255,127,127), self.crect)
 
 
 class Ball(Sprite):
@@ -229,12 +229,12 @@ class Ball(Sprite):
 
 		pl = self.board.pl
 
-		l_status = pl.status_ball(self.rect)
-		r_status = pr.status_ball(self.rect)
+		pl.status_ball(self)
+		pr.status_ball(self)
 
-		if l_status == 'lost':
+		if pl.status == 'lost':
 			self.board.score('right')
-		elif r_status == 'lost':
+		elif pr.status == 'lost':
 			self.board.score('left')
 
 		
@@ -265,8 +265,6 @@ class Ball(Sprite):
 		speed = np.array([vx, vy])
 		
 		self.set_speed(speed)
-
-
 
 	def collide_paddles(self):
 		pr = self.board.pr

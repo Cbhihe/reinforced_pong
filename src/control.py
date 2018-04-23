@@ -1,4 +1,5 @@
 import pygame
+from pygame import Rect
 import numpy as np
 
 class PaddleController:
@@ -31,6 +32,7 @@ class PCFollower(PaddleController):
 			vy = 0
 	
 		self.paddle.set_speed(vy)
+		self.paddle.update()
 
 class PCKeyboard(PaddleController):
 
@@ -52,13 +54,15 @@ class PCKeyboard(PaddleController):
 				elif event.key == pygame.K_DOWN and vy == down: vy = 0
 	
 		self.paddle.set_speed(vy)
+		self.paddle.update()
 
 class PCSimpleLearning(PaddleController):
 
 	def __init__(self, board, paddle, ball):
 		super().__init__(board, paddle, ball)
 
-		q = np.random.uniform(size=(3, 3))
+		#q = np.random.uniform(size=(2, 2))
+		q = np.zeros((2, 2)) + 1
 
 		# Normalize action probability so that it sums one
 		q = q / q.sum(axis=0)
@@ -67,65 +71,82 @@ class PCSimpleLearning(PaddleController):
 
 		#print(self.q)
 
-		self.actions = ['up', 'stop', 'down']
-		self.states = ['above', 'middle', 'below']
+		self.actions = ['up', 'down']
+		self.states = ['above', 'below']
 
-		self.alpha = 0.01
-		self.gamma = 0.8
+		self.alpha = 0.1
+		self.gamma = 0.01
+		self.doing = 'up'
 
 	def reward(self, s, a):
-		if s == 'above':
-			if a == 'up': return 1
-			else:
+		who = self.board.player_scored
+		me = self.paddle.side
+		if who != None:
+			if who != me:
 				return -1
-		elif s == 'below':
-			if a == 'down': return 1
-			else:
-				return -1
-		elif s == 'middle':
-			if a == 'stop': return 1
-			else:
-				return -1
+			#else:
+			#	return -1
+
+		if self.paddle.status == 'collision':
+			return 1
+
+		
+
+		#if s == 'above':
+		#	if a == 'up': return 1
+		#	else:
+		#		return -1
+		#elif s == 'below':
+		#	if a == 'down': return 1
+		#	else:
+		#		return -1
+		#elif s == 'middle':
+		#	if a == 'stop': return 1
+		#	else:
+		#		return -1
+		#return 0
 		return 0
 
 	def do(self, a):
 		#print('Doing '+a)
-		down = -self.paddle.top_speed
-		up = self.paddle.top_speed
+		action = self.actions[a]
+		self.doing = action
+		down = self.paddle.top_speed
+		up = -self.paddle.top_speed
 
-		if a == 'up':
+		if action == 'up':
 			self.paddle.set_speed(up)
-		elif a == 'stop':
-			self.paddle.set_speed(0)
-		elif a == 'down':
+		elif action == 'down':
 			self.paddle.set_speed(down)
+
+		self.paddle.update()
+
+	def get_state(self):
+		bx, by = self.ball.position
+		py = self.paddle.y
+
+		if by < py: return 0
+		elif by >= py: return 1
 
 	def update(self):
 
 		#print(self.q)
-
-		state = 0
-
-		bx,by = self.ball.position
-		py = self.paddle.y
-
-		if py < by: state = 'above'
-		elif py > by: state = 'below'
-		else: state = 'middle'
+		s0 = self.get_state()
+		me = self.paddle.side
 
 		q = self.q
-		s = self.states.index(state)
-		#print(np.sum(q[s,:]))
-		action = np.random.choice(self.actions, 1, p=q[s,:])
-		a = self.actions.index(action)
-		#a = np.argmax(q, axis=1)[s]
-		action = self.actions[a]
+		#action = np.random.choice(self.actions, 1, p=q[s0,:])
+		#a = self.actions.index(action)
 
-		r = self.reward(state, action)
+		# Select the action with the maximum Q
+		a = np.argmax(q, axis=1)[s0]
+		r = self.reward(s0, a)
 
 
-		# Take the action
-		self.do(action)
+		# Take the action (we move the paddle here!)
+		self.do(a)
+
+		s1 = self.get_state()
 
 
 
@@ -133,13 +154,60 @@ class PCSimpleLearning(PaddleController):
 		gamma = self.gamma
 
 
+		# The best estimate should be the NEXT state after the update
+		best_estimate = np.argmax(q, axis=1)[s1]
 
-		best_estimate = np.argmax(q, axis=1)[s]
+		prev_qsa = q[s0, a]
 
-		q[s, a] = (1-alpha) * q[s, a] + alpha * (r + gamma * best_estimate)
-		q[s, a] = max(q[s, a], 0.0)
+		#q[s, a] = (1-alpha) * q[s, a] + alpha * (r + q[s, a])
+		if r != 0:
+			q[s0, a] = (1-alpha) * q[s0, a] + alpha * (r + gamma * best_estimate)
+			#q[s, a] = max(q[s, a], 0.01)
 
-		q = (q.T / q.T.sum(axis=0)).T
+			q = (q.T / q.T.sum(axis=0)).T
+		new_qsa = q[s0, a]
+
+		if r!= 0:
+			np.set_printoptions(precision=3)
+			print("Player {}".format(me))
+			#print("At q[{}, {}] from {:.2f} to {:.2f}".format(
+			#	s, a, prev_qsa, new_qsa))
+			print(self.q)
+			print("-------------------------")
 
 		self.q = q
 
+	def draw(self):
+		# Draw the action being taken
+
+		a = self.doing
+		p = self.paddle.rect
+		b = self.board.rect
+		w,h = p.size
+		side = self.paddle.side
+
+		w_up = h/2 * self.q[0,0]
+		h_up = h/2 * self.q[0,1]
+		up_rect = Rect((0,0), (w_up, h_up))
+
+		w_down = h/2 * self.q[1,1]
+		h_down = h/2 * self.q[1,0]
+		down_rect = Rect((0,0), (w_down, h_down))
+
+		if side == 'left':
+			up_rect.topleft = b.topleft
+			down_rect.bottomleft = b.bottomleft
+		else:
+			up_rect.topright = b.topright
+			down_rect.bottomright = b.bottomright
+
+		col = (255,0,0)
+		col_now = (0,255,0)
+		col_up = col
+		col_down = col
+
+		if a == 'up': col_up = col_now
+		elif a == 'down': col_down = col_now
+
+		pygame.draw.rect(self.board.surf, col_up, up_rect)
+		pygame.draw.rect(self.board.surf, col_down, down_rect)
