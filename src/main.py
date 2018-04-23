@@ -16,8 +16,8 @@ def main():
 
 	cl = PCSimpleLearning
 	#cl = PCFollower
-	cr = PCSimpleLearning
-	#cr = PCKeyboard
+	#cr = PCSimpleLearning
+	cr = PCKeyboard
 
 	b = Board(screen, SCREEN_SIZE, cl, cr)
 	clock = pygame.time.Clock()
@@ -27,6 +27,7 @@ def main():
 
 	tic = time.time()
 	while True:
+
 		b.update()
 
 		if DRAW:

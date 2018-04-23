@@ -58,16 +58,16 @@ class PCSimpleLearning(PaddleController):
 	def __init__(self, board, paddle, ball):
 		super().__init__(board, paddle, ball)
 
-		q = np.random.uniform(size=(2, 3))
+		q = np.random.uniform(size=(3, 3))
 
 		# Normalize action probability so that it sums one
 		q = q / q.sum(axis=0)
 
 		self.q = q.T
 
-		print(self.q)
+		#print(self.q)
 
-		self.actions = ['up', 'down']
+		self.actions = ['up', 'stop', 'down']
 		self.states = ['above', 'middle', 'below']
 
 		self.alpha = 0.01
@@ -82,19 +82,27 @@ class PCSimpleLearning(PaddleController):
 			if a == 'down': return 1
 			else:
 				return -1
+		elif s == 'middle':
+			if a == 'stop': return 1
+			else:
+				return -1
 		return 0
 
 	def do(self, a):
-		print('Doing '+a)
+		#print('Doing '+a)
 		down = -self.paddle.top_speed
 		up = self.paddle.top_speed
 
-		if a == 'up': self.paddle.set_speed(up)
-		else: self.paddle.set_speed(down)
+		if a == 'up':
+			self.paddle.set_speed(up)
+		elif a == 'stop':
+			self.paddle.set_speed(0)
+		elif a == 'down':
+			self.paddle.set_speed(down)
 
 	def update(self):
 
-		print(self.q)
+		#print(self.q)
 
 		state = 0
 
