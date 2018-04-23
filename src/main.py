@@ -11,7 +11,9 @@ FPS = 60
 
 def main():
 
-	pygame.init()
+	pygame.font.init()
+	pygame.display.init()
+
 	screen = pygame.display.set_mode(SCREEN_SIZE)
 
 	cl = PCSimpleLearning
@@ -26,7 +28,7 @@ def main():
 	delay = 10000
 
 	tic = time.time()
-	while True:
+	while b.run:
 
 		b.update()
 

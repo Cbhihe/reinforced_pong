@@ -42,7 +42,8 @@ class PCKeyboard(PaddleController):
 		up = -self.paddle.top_speed
 		down = self.paddle.top_speed
 
-		events = pygame.event.get()
+		#events = pygame.event.get()
+		events = self.board.events
 		for event in events:
 			if event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_UP: vy = up

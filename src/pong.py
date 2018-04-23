@@ -40,6 +40,7 @@ class Board(Sprite):
 
 		# TODO: Use a good font
 		self.font = pygame.font.SysFont(None, 72)
+		self.run = True
 
 	def draw_net(self):
 		rect = self.surf.get_rect()
@@ -71,6 +72,14 @@ class Board(Sprite):
 
 	
 	def update(self):
+		self.events = pygame.event.get()
+		for event in self.events:
+			if event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_q:
+					#pygame.quit()
+					#exit()
+					self.run = False
+
 		self.ball.update()
 
 		self.cl.update()
