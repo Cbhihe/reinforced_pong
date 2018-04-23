@@ -13,6 +13,7 @@ PADDLE_MARGIN_X = 50
 PADDLE_MARGIN_Y = 10
 PADDLE_WIDTH = 10
 PADDLE_HEIGHT = 100
+PADDLE_RADIUS = 400
 BALL_DIAMETER = 10
 SCORE_MARGIN_X = 150
 SCORE_MARGIN_Y = 50
@@ -143,7 +144,7 @@ class Paddle(Sprite):
 		# Paddle vertical speed
 		self.vy = 0.0
 
-		self.top_speed = 8.0
+		self.top_speed = 5.0
 		self.status = None
 
 	def set_speed(self, vy):
@@ -270,17 +271,42 @@ class Ball(Sprite):
 		pr = self.board.pr
 		pl = self.board.pl
 
-		vx, vy = self.speed
+		v = self.speed
+		vx, vy = v
 
-		if collide_rect(self, pr) or collide_rect(self, pl):
-			vx = -vx
+		#if collide_rect(self, pr) or collide_rect(self, pl):
+		if collide_rect(self, pl) and vx < 0:
 
-			# Speed up a bit the ball
-			vx *= 1.1
-			vy *= 1.1
+			cx, cy = pl.rect.center
+			cx -= PADDLE_RADIUS
 
-		speed = np.array([vx, vy])
-		self.set_speed(speed)
+		elif collide_rect(self, pr) and vx > 0:
+
+			cx, cy = pr.rect.center
+			cx += PADDLE_RADIUS
+
+		else:
+			return
+
+		bx, by = self.rect.center
+
+		nx = bx - cx
+		ny = by - cy
+
+		n = np.array([nx, ny])
+
+		# The new axis of reflectios for the trajectory
+		n = n / np.linalg.norm(n)
+
+		v = v - 2 * np.dot(v, n) * n
+
+
+		#vx = -vx
+		
+		# Speed up a bit the ball
+		v *= 1.1
+
+		self.set_speed(v)
 
 	def set_speed(self, speed):
 		speed = np.array(speed)
