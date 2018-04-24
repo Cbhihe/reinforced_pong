@@ -7,13 +7,12 @@ from pygame import Rect,Surface
 from control import *
 import numpy as np
 
-
 BOARD_MARGIN_X = 20
 PADDLE_MARGIN_X = 50
-PADDLE_MARGIN_Y = 10
+PADDLE_MARGIN_Y = 0
 PADDLE_WIDTH = 10
 PADDLE_HEIGHT = 100
-PADDLE_RADIUS = 400
+PADDLE_RADIUS = 200
 BALL_DIAMETER = 10
 SCORE_MARGIN_X = 150
 SCORE_MARGIN_Y = 50
@@ -92,6 +91,11 @@ class Board(Sprite):
 			self.ball.restart()
 			self.restart = False
 			self.player_scored = None
+			#print(self.marker)
+
+		#if self.marker['left'] >= 1000 or self.marker['right'] >= 1000:
+		#	print(self.marker)
+		#	self.run = False
 
 	def draw(self):
 		# Clear the board
@@ -100,13 +104,14 @@ class Board(Sprite):
 		# Draw elements
 		self.draw_net()
 		self.draw_score()
-		self.ball.draw()
 
 		self.pl.draw()
 		self.pr.draw()
 
 		self.cl.draw()
 		self.cr.draw()
+
+		self.ball.draw()
 
 		# Finally blit into the screen
 		self.screen.blit(self.surf, dest=(0,0))
@@ -124,8 +129,8 @@ class Paddle(Sprite):
 		self.board_size = board.surf.get_size()
 		self.margin = (hmargin, vmargin)
 
-		self.paddle_size = (PADDLE_WIDTH, PADDLE_HEIGHT)
-		self.rect = Rect((0, 0), self.paddle_size)
+		self.size = (PADDLE_WIDTH, PADDLE_HEIGHT)
+		self.rect = Rect((0, 0), self.size)
 
 		# 1-pixel wide collision rect placed at the center side of the paddle
 		self.crect = Rect((0, 0), (1, PADDLE_HEIGHT))
@@ -153,7 +158,7 @@ class Paddle(Sprite):
 		# Paddle vertical speed
 		self.vy = 0.0
 
-		self.top_speed = 5.0
+		self.top_speed = 3.0
 		self.status = None
 
 	def set_speed(self, vy):
@@ -326,7 +331,7 @@ class Ball(Sprite):
 		if abs_speed > self.top_speed:
 			speed/abs_speed 
 			speed *= self.top_speed/abs_speed
-			print('Ball limit speed reached')
+			#print('Ball limit speed reached')
 
 		self.speed = speed
 
