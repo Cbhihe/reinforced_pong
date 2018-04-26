@@ -108,10 +108,10 @@ class Board(Sprite):
 		self.pl.draw()
 		self.pr.draw()
 
+		self.ball.draw()
 		self.cl.draw()
 		self.cr.draw()
 
-		self.ball.draw()
 
 		# Finally blit into the screen
 		self.screen.blit(self.surf, dest=(0,0))
@@ -264,12 +264,13 @@ class Ball(Sprite):
 		# Select a random angle such that the ball goes directly to the paddle
 		# area (margins are ignored?)
 		max_slope = (bh/2) / (bw/2)
-		max_angle = np.tan(max_slope)
+		max_angle = np.arctan(max_slope)
 		angle = np.random.uniform(-max_angle, max_angle)
 
 		# If the winner was the right one, the ball should move to the left
 		if side == 'right':
 			angle = np.pi + angle
+
 
 		# Now we have the angle and the vector length
 		phi = angle
@@ -315,6 +316,21 @@ class Ball(Sprite):
 		v = v - 2 * np.dot(v, n) * n
 
 
+		# Avoid the ball to move close to 90 and 270 degrees (pi/2 and 3 pi/2)
+
+		#angle_limit = 0.2 # About 11.5 degrees
+		#if abs(angle - pi/2) < 0.2:
+		#	if angle < pi/2:
+		#		angle = pi/2 - angle_limit
+		#	else:
+		#		angle = pi/2 + angle_limit
+
+		#if abs(angle - 3*pi/2) < 0.2:
+		#	if angle < 3*pi/2:
+		#		angle = 3*pi/2 - angle_limit
+		#	else:
+		#		angle = 3*pi/2 + angle_limit
+
 		#vx = -vx
 		
 		# Speed up a bit the ball
@@ -332,6 +348,12 @@ class Ball(Sprite):
 			speed/abs_speed 
 			speed *= self.top_speed/abs_speed
 			#print('Ball limit speed reached')
+
+		vx,vy = speed
+		if np.abs(vx) < 1.0:
+			vx = np.sign(vx) * 1.0
+
+		speed = np.array([vx, vy])
 
 		self.speed = speed
 

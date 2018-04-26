@@ -16,14 +16,19 @@ def main():
 
 	pygame.font.init()
 	pygame.display.init()
+	pygame.display.set_caption('Skynet')
 
 	screen = pygame.display.set_mode(SCREEN_SIZE)
 
+	#cl = PCKeyboard
 	#cl = PC1
 	cl = PCFollower
 	#cl = PC2
-	cr = PC2
+	#cl = PCFollower
+	#cr = PC2
 	#cr = PCKeyboard
+	cr = PCPredictor
+	#cr = PCPredictorLearn
 
 	b = Board(screen, SCREEN_SIZE, cl, cr)
 	clock = pygame.time.Clock()
