@@ -70,7 +70,7 @@ class Board(Sprite):
 		self.surf.blit(surf_r, rect_r)
 
 	
-	def update(self):
+	def update(self, pause):
 		self.events = pygame.event.get()
 		for event in self.events:
 			if event.type == pygame.KEYDOWN:
@@ -78,6 +78,8 @@ class Board(Sprite):
 					#pygame.quit()
 					#exit()
 					self.run = False
+
+		if pause: return
 
 		self.ball.update()
 

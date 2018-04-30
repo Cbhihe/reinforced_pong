@@ -7,7 +7,7 @@ os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 SCREEN_SIZE = (640, 480)
 DRAW = True
-FPS = 200
+FPS = 20
 #FPS = 60
 
 def main():
@@ -21,8 +21,8 @@ def main():
 	screen = pygame.display.set_mode(SCREEN_SIZE)
 
 	#cl = PCKeyboard
-	#cl = PC1
-	cl = PCFollower
+	cl = PC2
+	#cl = PCFollower
 	#cl = PC2
 	#cl = PCFollower
 	#cr = PC2
@@ -35,12 +35,13 @@ def main():
 
 	frame = 1
 	delay = 10000
+	pause = False
 
 	draw = DRAW
 	tic = time.time()
 	while b.run:
 
-		b.update()
+		b.update(pause)
 
 		events = b.events
 
@@ -51,6 +52,8 @@ def main():
 					#pygame.quit()
 					#exit()
 					draw = not draw
+				elif event.key == pygame.K_p:
+					pause = not pause
 
 		if draw or (not frame % delay):
 			b.draw()

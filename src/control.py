@@ -2,7 +2,7 @@ import pygame
 from pygame import Rect
 import numpy as np
 
-DEBUG = False
+DEBUG = True
 
 class PaddleController:
 	def __init__(self, board, paddle, ball):
@@ -68,16 +68,16 @@ class PC1(PaddleController):
 		#q = np.zeros((2, 2)) + 1
 
 		# Normalize action probability so that it sums one
-		q = q / q.sum(axis=0)
+		#q = q / q.sum(axis=0)
 
-		self.q = q.T
+		self.q = q
 
 		#print(self.q)
 
 		self.actions = ['up', 'down']
 
 		self.alpha = 0.1
-		self.gamma = 0.01
+		self.gamma = 0.5
 		self.doing = 'up'
 
 	def reward(self, s, a):
@@ -89,8 +89,8 @@ class PC1(PaddleController):
 			#else:
 			#	return -1
 
-		#if self.paddle.status == 'collision':
-		#	return 1
+		if self.paddle.status == 'collision':
+			return 1
 
 		
 
@@ -127,7 +127,10 @@ class PC1(PaddleController):
 		bx, by = self.ball.position
 		py = self.paddle.y
 
+		# Above
 		if by < py: return 0
+
+		# Below
 		elif by >= py: return 1
 
 	def update(self):
@@ -157,7 +160,7 @@ class PC1(PaddleController):
 
 
 		# The best estimate should be the NEXT state after the update
-		best_estimate = np.argmax(q, axis=1)[s1]
+		best_estimate = np.argmax(q[s1, :])
 
 		prev_qsa = q[s0, a]
 
@@ -166,10 +169,10 @@ class PC1(PaddleController):
 			q[s0, a] = (1-alpha) * q[s0, a] + alpha * (r + gamma * best_estimate)
 			#q[s, a] = max(q[s, a], 0.01)
 
-			q = (q.T / q.T.sum(axis=0)).T
+			#q = (q.T / q.T.sum(axis=0)).T
 		new_qsa = q[s0, a]
 
-		if r!= 0 and DEBUG:
+		if r!= 0:
 			np.set_printoptions(precision=3)
 			print("Player {}".format(me))
 			#print("At q[{}, {}] from {:.2f} to {:.2f}".format(
@@ -188,12 +191,15 @@ class PC1(PaddleController):
 		w,h = p.size
 		side = self.paddle.side
 
-		w_up = h/2 * self.q[0,0]
-		h_up = h/2 * self.q[0,1]
+		sum_q0 = np.sum(self.q[0,:])
+		sum_q1 = np.sum(self.q[1,:])
+
+		w_up = h/2 * self.q[0,0]/sum_q0
+		h_up = h/2 * self.q[0,1]/sum_q0
 		up_rect = Rect((0,0), (w_up, h_up))
 
-		w_down = h/2 * self.q[1,1]
-		h_down = h/2 * self.q[1,0]
+		w_down = h/2 * self.q[1,1]/sum_q1
+		h_down = h/2 * self.q[1,0]/sum_q1
 		down_rect = Rect((0,0), (w_down, h_down))
 
 		if side == 'left':
@@ -228,22 +234,22 @@ class PC2(PaddleController):
 		self.pvbins = 1
 		self.hbins = 1
 		self.vbins = 1
-		self.pbbins = 3 + 2
+		self.pbbins = 1 + 2
 
 		self.num_states = self.pvbins * self.vbins * self.hbins * self.pbbins
 
-		q = np.random.uniform(size=(self.num_states, 2))
-		#q = np.zeros((self.num_states, 2)) + 1
+		#q = np.random.uniform(size=(self.num_states, 2))
+		q = np.zeros((self.num_states, 2)) + 1
 
 		# Normalize action probability so that it sums one
-		q = (q.T / q.T.sum(axis=0)).T
+		#q = (q.T / q.T.sum(axis=0)).T
 
 		self.q = q
 
 		#print(self.q)
 
-		self.alpha = 0.001
-		self.gamma = 0.3
+		self.alpha = 0.01
+		self.gamma = 1.0
 		self.doing = 0
 		self.state = 0
 
@@ -330,12 +336,13 @@ class PC2(PaddleController):
 		#a = self.actions.index(action)
 
 		# Select the action with the maximum Q
-		a = np.argmax(q, axis=1)[s0]
-		r = self.reward(s0, a)
+		a = np.argmax(q[s0, :])
 
+		r = self.reward(s0, a)
 
 		# Take the action (we move the paddle here!)
 		self.do(a)
+		
 
 		s1 = self.get_state()
 
@@ -346,28 +353,41 @@ class PC2(PaddleController):
 
 
 		# The best estimate should be the NEXT state after the update
-		best_estimate = np.argmax(q, axis=1)[s1]
+		best_estimate = np.max(q[s1, :])
 
-		prev_qsa = q[s0, a]
+		#prev_qsa = q[s0, a]
 
 		#q[s, a] = (1-alpha) * q[s, a] + alpha * (r + q[s, a])
-		if r != 0:
+		#if r != 0:
 		#if r != 0 or s0 != s1:
 		#if True:
-			q[s0, a] = (1-alpha) * q[s0, a] + \
-					alpha * (r + gamma * best_estimate - q[s0,a])
-			#q[s, a] = max(q[s, a], 0.01)
+		np.set_printoptions(precision=3)
+		if DEBUG:
+			print("---------- Q is being updated -----------".format(me))
+			print(q)
+			print("Action taken is {}".format(a))
+			print("Reward = {}".format(r))
+			print("Previous q[s0, a] = {}".format(q[s0, a]))
+			print("And max q[s1, :] = {}".format(best_estimate))
 
-			q = (q.T / q.T.sum(axis=0)).T
-		new_qsa = q[s0, a]
+		q[s0, a] = (1-alpha) * q[s0, a] + \
+				alpha * (r + gamma * best_estimate - q[s0, a])
 
-		if r!= 0 and DEBUG:
-			np.set_printoptions(precision=3)
-			print("Player {}".format(me))
-			#print("At q[{}, {}] from {:.2f} to {:.2f}".format(
-			#	s, a, prev_qsa, new_qsa))
-			print(self.q)
-			print("-------------------------")
+		if DEBUG:
+			print("Finally q[s0, a] = {}".format(q[s0, a]))
+			print(q)
+			print("------------- End of update -------------".format(me))
+		#q[s, a] = max(q[s, a], 0.01)
+
+		#q = (q.T / q.T.sum(axis=0)).T
+		#new_qsa = q[s0, a]
+
+		#if r!= 0 and DEBUG:
+		#	np.set_printoptions(precision=3)
+		#	#print("At q[{}, {}] from {:.2f} to {:.2f}".format(
+		#	#	s, a, prev_qsa, new_qsa))
+		#	print(self.q)
+		#	print("-------------------------")
 
 		self.q = q
 
@@ -379,27 +399,67 @@ class PC2(PaddleController):
 		b = self.board.rect
 		bw,bh = b.size
 		pw,ph = p.size
-		col = (70,0,0)
+		col = (200,200,0)
 
 		n = self.num_states
 		hbar = max(1, bh/n)
 		wbar = 40
+
+		scale = np.max(np.abs(self.q))
+
 		for st in range(self.num_states):
 			if st == self.state:
-				color = (150,0,0)
+				color = (255,0,0)
 			else:
 				color = col
 			x = p.x + pw + 5
 			y = st * hbar
+
+			q = self.q
+			q0 = q[st, 0]
+			q1 = q[st, 1]
+
+			w0 = int(np.abs(wbar * q0 / scale))
+			w1 = int(np.abs(wbar * q1 / scale))
+
 			max_a = np.argmax(self.q[st,:])
 
-			wsum = np.sum(self.q[st, :])
+			a0, a1 = (0,0)
+			if st == self.state:
+				if max_a == 0:
+					a0 = 255
+					a1 = 0
+				else:
+					a0 = 0
+					a1 = 255
+
+			r0, g0, b0 = (0, 255, a0)
+			r1, g1, b1 = (0, 255, a1)
+
+			if q0 < 0:
+				r0 = 255
+				g0 = 0
+			elif q1 < 0:
+				r1 = 255
+				g1 = 0
+
+			c0 = (r0, g0, a0)
+			c1 = (r1, g1, a1)
+
+			wsum = np.sum(np.abs(self.q[st, :]))
+
 			wm = int(wbar * max_a)
-			ws = max(1, int(wbar * self.q[st, 1]/wsum))
-			rect = Rect((x, y), (wm, hbar))
-			pygame.draw.rect(self.board.surf, (30,0,0), rect)
-			rect = Rect((x, y), (ws, hbar))
-			pygame.draw.rect(self.board.surf, color, rect)
+			ws = max(1, int(wbar * self.q[st, 1]))
+
+			rect0 = Rect((x+wbar, y), (-w0, hbar))
+			rect1 = Rect((2+x+wbar, y), (w1, hbar))
+
+			pygame.draw.rect(self.board.surf, c0, rect0)
+			pygame.draw.rect(self.board.surf, c1, rect1)
+
+			#pygame.draw.rect(self.board.surf, (30,200,200), rect)
+			#rect = Rect((x, y), (ws, hbar))
+			#pygame.draw.rect(self.board.surf, color, rect)
 
 class PCPredictor(PaddleController):
 
