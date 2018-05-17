@@ -86,7 +86,7 @@ class Board(Sprite):
 		self.cl.update()
 		self.cr.update()
 
-		#self.pl.update()
+		self.pl.update()
 		#self.pr.update()
 
 		if self.restart:

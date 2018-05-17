@@ -7,8 +7,8 @@ os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 SCREEN_SIZE = (640, 480)
 DRAW = True
-FPS = 20
-#FPS = 60
+#FPS = 20
+FPS = 60
 
 def main():
 
