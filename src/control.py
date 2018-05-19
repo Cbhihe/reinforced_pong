@@ -1,6 +1,7 @@
 import pygame
 from pygame import Rect
 import numpy as np
+import collections, time
 
 DEBUG = False
 
@@ -222,26 +223,30 @@ class PC1(PaddleController):
 
 
 
-
-
-
-
 class PC2(PaddleController):
 
 	def __init__(self, board, paddle, ball):
 		super().__init__(board, paddle, ball)
 
-		self.pvbins = 5
-		self.hbins = 4
-		self.vbins = 5
-		self.pbbins = 1
-		self.angle_nbins = int(360 / 60)
+		self.pvbins	=		9	# Left paddle (me) y position
+		self.p2vbins =		7	# Right paddle (opponent) y position
+		self.hbins =		11	# Absolute ball x position
+		self.vbins =		11	# Absolute ball y position
+		self.bsbins =		5	# Ball speed magnitude
+		self.pbbins =		5	# Paddle zones
+		self.angle_bins =	18	# Ball direction angle
 
-		self.num_states = self.pvbins * self.vbins * self.hbins * self.pbbins * self.angle_nbins
+		#self.angle_bins = int(360 / 60)
+
+		self.num_states = self.pvbins * self.p2vbins * self.vbins * self.hbins * \
+			self.bsbins * self.pbbins * self.angle_bins
+
 		self.num_actions = 2
 
+		print('Number of states is {}'.format(self.num_states))
+
 		#q = np.random.uniform(size=(self.num_states, 2))
-		q = np.zeros((self.num_states, self.num_actions)) + 1
+		q = np.zeros((self.num_states, self.num_actions))
 
 		# Normalize action probability so that it sums one
 		#q = (q.T / q.T.sum(axis=0)).T
@@ -250,17 +255,25 @@ class PC2(PaddleController):
 
 		#print(self.q)
 
-		self.alpha = 0.1
+		self.alpha = 0.3
 		self.gamma = 1.0
-		self.epsilon = 0.05
+		self.epsilon = 0.0
 
 		self.doing = 0
 		self.state = 0
 		self.iteration = 0
 
+		self.accum_r = 0.0
+		self.last_rewards = collections.deque(maxlen=500000)
+		self.last_states = collections.deque(maxlen=1000)
 		self.s0 = 0
 		self.a = 0
 		self.print_info = False
+		self.should_draw = False
+		self.interval_print = True
+		self.print_iteration = 0
+		self.print_step = 5000
+		self.tic = 0
 
 	def reward(self, s, a):
 		who = self.board.player_scored
@@ -268,15 +281,14 @@ class PC2(PaddleController):
 		if who != None:
 			if who != me:
 				return -1
-			#else:
-			#	return 1
+			else:
+				return 1
 
 		if self.paddle.status == 'collision':
 			return 0.1
 
-		
-
-		return 0
+		return -0.001
+		#return 0
 
 	def do(self, a):
 		#print('Doing '+a)
@@ -291,12 +303,33 @@ class PC2(PaddleController):
 
 		#self.paddle.update()
 
+	def state_vector(self, states, bins):
+		s = 0
+		last_bins = 1
+		for i in range(len(states)-1, -1, -1):
+			s += states[i] * last_bins
+			last_bins *= bins[i]
+
+		return s
+
 	def get_state(self):
 		bx, by = self.ball.position
+		bs = np.linalg.norm(self.ball.speed)
 		pcentery = self.paddle.rect.centery
 		pcenterx = self.paddle.rect.centerx
 		ptop = self.paddle.rect.top
 		pbottom = self.paddle.rect.bottom
+
+		p2centery = self.board.pr.rect.centery
+		p2centerx = self.board.pr.rect.centerx
+
+		pvbins = self.pvbins
+		hbins = self.hbins
+		p2vbins = self.p2vbins
+		bsbins = self.bsbins
+		angle_bins = self.angle_bins
+		vbins = self.vbins
+		pbbins = self.pbbins
 
 		v = self.ball.speed
 		vx, vy = v
@@ -304,50 +337,59 @@ class PC2(PaddleController):
 		# In which bin the paddle is located?
 		w,h = self.board.size
 
-		pvbin_h = h/self.pvbins
+		pvbin_h = h/pvbins
 		pvbin = int(pcentery / pvbin_h)
-		pvbin = max(0, min(self.pvbins-1,pvbin)) 
+		pvbin = max(0, min(pvbins-1,pvbin)) 
 
-		hbin_w = w/self.hbins
+		p2vbin_h = h/p2vbins
+		p2vbin = int(p2centery / p2vbin_h)
+		p2vbin = max(0, min(p2vbins-1,p2vbin)) 
+
+		hbin_w = w/hbins
 		hbin = int(bx / hbin_w)
-		hbin = max(0, min(self.hbins-1,hbin)) 
+		hbin = max(0, min(hbins-1,hbin)) 
 
-		vbin_h = h/self.vbins
+		vbin_h = h/vbins
 		vbin = int(by / vbin_h)
-		vbin = max(0, min(self.vbins-1,vbin)) 
+		vbin = max(0, min(vbins-1,vbin)) 
 
-		angle = np.arctan(-vy/vx)
-		angle_bin_step = (np.pi*2) / self.angle_nbins
+		bsbin_h = self.ball.top_speed/bsbins
+		bsbin = int(bs / bsbin_h)
+		bsbin = max(0, min(bsbins-1,bsbin)) 
 
-		# Angle to [0, pi]
-		angle += np.pi/2
+		angle = np.arctan2(-vy, vx)
+		if angle < 0:
+			angle += 2*np.pi
+		angle_bin_step = (np.pi*2) / angle_bins
+
 		angle_bin = int(angle / angle_bin_step)
-		angle_bin = max(0, min(self.angle_nbins - 1, angle_bin)) 
+		#angle_bin = max(0, min(self.angle_bins - 1, angle_bin)) 
 
 		#print(angle_bin)
 
-		if self.pbbins == 1:
+		if pbbins == 1:
 			pbbin = 0
 		else:
 			if by < ptop:
 				pbbin = 0
 			elif by > pbottom:
-				pbbin = self.pbbins - 1
+				pbbin = pbbins - 1
 			else:
 				pw,ph = self.paddle.size
 
-				pbbin_h = ph / (self.pbbins - 2)
+				pbbin_h = ph / (pbbins - 2)
 				pbbin = 1 + int((by - ptop) / pbbin_h)
 				#print("ball at {}, ptop = {} pbin_h = {} pbin = {}".format(
 				#	(bx, by), ptop, pbin_h, pbin))
 
 		#print(vbin, hbin, pbin)
 
-		return (angle_bin * self.pvbins * self.hbins * self.vbins * self.pbbins)+\
-			(pvbin * self.hbins * self.vbins * self.pbbins) + \
-			(hbin * self.vbins * self.pbbins) + \
-			(vbin * self.pbbins) + \
-			pbbin
+		s = self.state_vector(
+			[pvbin,  hbin,  p2vbin,  bsbin,  angle_bin,  vbin,  pbbin ],
+			[pvbins, hbins, p2vbins, bsbins, angle_bins, vbins, pbbins])
+
+
+		return s
 			
 
 	def action_epsilon_greedy(self, state):
@@ -364,7 +406,6 @@ class PC2(PaddleController):
 
 	def update(self):
 
-
 		self.iteration += 1
 		
 		# Finish last iteration first
@@ -376,20 +417,35 @@ class PC2(PaddleController):
 		me = self.paddle.side
 
 		s1 = self.get_state()
+		if not s1 in self.last_states:
+			self.last_states.append(s1)
 		r = self.reward(s1, a)
+		self.accum_r += r
+		self.last_rewards.append(r)
 		q_max = np.max(q[s1, :])
 
 		# Update q
 		should_print = ((r != 0) or (s0 != s1))
+
+		speed = 0
+		if self.print_iteration < self.iteration:
+			self.print_iteration += self.print_step
+			self.interval_print = True
+			toc = time.clock()
+			elapsed = toc - self.tic
+			speed = self.print_step / elapsed
+			self.tic = time.clock()
 
 
 		for event in self.board.events:
 			if event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_i:
 					self.print_info = True
+				if event.key == pygame.K_d:
+					self.should_draw = not self.should_draw
 
 
-		prev_q = q.copy()
+		#prev_q = q.copy()
 		np.set_printoptions(precision=3)
 
 		if DEBUG and should_print:
@@ -400,21 +456,26 @@ class PC2(PaddleController):
 			print("Previous q[s0={}, a={}] = {}".format(s0, a, q[s0, a]))
 			print("And max q[s1={}, :] = {}".format(s1, q_max))
 
+		#prev_q_s0_a = q[s0, a]
 		q[s0, a] = q[s0, a] + alpha * (r + gamma * q_max - q[s0, a])
 		self.q = q
 
-		diff_q = q - prev_q
+		#diff = q[s0, a] - prev_q_s0_a
+
+		#diff_q = q - prev_q
 		#diff = np.linalg.norm(diff_q) / np.linalg.norm(q)
-		diff = np.linalg.norm(diff_q)
+		#diff = np.linalg.norm(diff_q)
 
 		if DEBUG and should_print:
 			print("Finally q[s0={}, a={}] = {}".format(s0, a, q[s0, a]))
 			print(q)
 			print("------------- End of update -------------".format(me))
-		if should_print and self.print_info:
+		if should_print and (self.print_info or self.interval_print):
 			self.print_info = False
-			print("delta = {:e} alpha = {:e} norm(q) = {:e} iteration = {}".format(
-				diff, self.alpha, np.linalg.norm(q), self.iteration))
+			self.interval_print = False
+			mean_r = np.mean(self.last_rewards)
+			print("r {:.3e} ({:.3e}), alpha {:.3e} iter {:.2e} ({:.1f} i/s)".format(
+				self.accum_r, mean_r, self.alpha, self.iteration, speed))
 
 		# Shift time: t <- t+1
 
@@ -428,7 +489,7 @@ class PC2(PaddleController):
 		# XXX Dont move the paddle
 		self.do(self.a)
 
-		self.alpha *= (1 - 1e-6)
+		self.alpha *= (1 - 1e-8)
 
 		#print("Alpha = {:e}".format(self.alpha))
 
@@ -446,61 +507,58 @@ class PC2(PaddleController):
 		hbar = max(1, bh/n)
 		wbar = 40
 
-		scale = np.max(np.abs(self.q))
+		# Draw the actual state little mark
+		x0 = p.x
+		y0 = int(self.s0 * bh/n)
+		rect = Rect((x0 - 7, y0), (5, hbar))
+		pygame.draw.rect(self.board.surf, (255,0,0), rect)
 
-		for st in range(self.num_states):
-			if st == self.s0:
-				color = (255,0,0)
-			else:
-				color = col
+		if not self.should_draw:
+			return
+
+
+#		if not self.should_draw:
+#			return
+#			states = [self.s0]
+#			scale = np.max(np.abs(self.q[self.s0,:]))
+#		else:
+		#states = range(self.num_states)
+		states = self.last_states
+		scale = np.max(np.abs(self.q[states, :]))
+
+		for st in states:
+			#if st != self.s0: continue
+
+			# Skip if the q was not updated (not reached)
+			if np.all(self.q[st,:] == 0):
+				continue
+
 			x = p.x + pw + 5
-			y = st * hbar
+			y = int(st * bh/n)
 
 			q = self.q
-			q0 = q[st, 0]
-			q1 = q[st, 1]
-
-			w0 = int(np.abs(wbar * q0 / scale))
-			w1 = int(np.abs(wbar * q1 / scale))
-
 			max_a = np.argmax(self.q[st,:])
 
-			a0, a1 = (0,0)
-			if st == self.s0:
-				if max_a == 0:
-					a0 = 255
-					a1 = 0
-				else:
-					a0 = 0
-					a1 = 255
+			q0 = q[st, 0]
+			q1 = q[st, 1]
+			qa = q[st, max_a]
 
-			r0, g0, b0 = (0, 255, a0)
-			r1, g1, b1 = (0, 255, a1)
+			if max_a == 0:
+				X = x+wbar
+				w0 = int(np.abs(wbar * q0 / scale))
+				W = -w0
+			else:
+				X = 2+x+wbar
+				w1 = int(np.abs(wbar * q1 / scale))
+				W = w1
 
-			if q0 < 0:
-				r0 = 255
-				g0 = 0
-			if q1 < 0:
-				r1 = 255
-				g1 = 0
+			# Red if q is negative, green positive
+			if qa < 0: color = (255, 0, 0)
+			else: color = (0, 255, 0)
 
-			c0 = (r0, g0, a0)
-			c1 = (r1, g1, a1)
+			rect_bar = Rect((X, y), (W, hbar))
+			pygame.draw.rect(self.board.surf, color, rect_bar)
 
-			wsum = np.sum(np.abs(self.q[st, :]))
-
-			wm = int(wbar * max_a)
-			ws = max(1, int(wbar * self.q[st, 1]))
-
-			rect0 = Rect((x+wbar, y), (-w0, hbar - 1))
-			rect1 = Rect((2+x+wbar, y), (w1, hbar - 1))
-
-			pygame.draw.rect(self.board.surf, c0, rect0)
-			pygame.draw.rect(self.board.surf, c1, rect1)
-
-			#pygame.draw.rect(self.board.surf, (30,200,200), rect)
-			#rect = Rect((x, y), (ws, hbar))
-			#pygame.draw.rect(self.board.surf, color, rect)
 
 class PCPredictor(PaddleController):
 
@@ -613,7 +671,7 @@ class PCPredictor(PaddleController):
 		p = self.paddle.rect
 		cx, cy = self.pc
 		rect = Rect((cx - 10, cy - 5), (10, 10))
-		color = (200,0,0)
+		color = (50,0,0)
 		pygame.draw.rect(self.board.surf, color, rect)
 
 

@@ -8,7 +8,7 @@ os.environ['SDL_VIDEO_CENTERED'] = '1'
 SCREEN_SIZE = (640, 480)
 DRAW = True
 #FPS = 20
-FPS = 60
+FPS = 200
 
 def main():
 
@@ -27,7 +27,8 @@ def main():
 	#cl = PCFollower
 	#cr = PC2
 	#cr = PCKeyboard
-	cr = PCPredictor
+	cr = PCFollower
+	#cr = PCPredictor
 	#cr = PCPredictorLearn
 
 	b = Board(screen, SCREEN_SIZE, cl, cr)

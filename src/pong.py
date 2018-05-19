@@ -9,11 +9,13 @@ import numpy as np
 
 BOARD_MARGIN_X = 20
 PADDLE_MARGIN_X = 50
-PADDLE_MARGIN_Y = 0
+PADDLE_MARGIN_Y = 20
 PADDLE_WIDTH = 10
 PADDLE_HEIGHT = 100
 PADDLE_RADIUS = 200
+PADDLE_TOP_SPEED = 3
 BALL_DIAMETER = 10
+BALL_INIT_SPEED = 5
 SCORE_MARGIN_X = 150
 SCORE_MARGIN_Y = 50
 
@@ -78,6 +80,13 @@ class Board(Sprite):
 					#pygame.quit()
 					#exit()
 					self.run = False
+				if event.key == pygame.K_r:
+					# Restart counters
+					self.marker = {'left':0, 'right':0}
+
+		if self.marker['left'] >= 100 or self.marker['right'] >= 100:
+			#print(self.marker)
+			self.marker = {'left':0, 'right':0}
 
 		if pause: return
 
@@ -160,7 +169,7 @@ class Paddle(Sprite):
 		# Paddle vertical speed
 		self.vy = 0.0
 
-		self.top_speed = 3.0
+		self.top_speed = PADDLE_TOP_SPEED
 		self.status = None
 
 	def set_speed(self, vy):
@@ -236,7 +245,7 @@ class Ball(Sprite):
 		self.speed = np.array([3.0, 3.3])
 
 		self.top_speed = diameter
-		self.init_speed = 5
+		self.init_speed = BALL_INIT_SPEED
 
 	def check_miss(self):
 		# Test if the ball was missed by any paddle
