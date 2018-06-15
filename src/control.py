@@ -8,8 +8,6 @@ DEBUG = False
 class PaddleController:
 	def __init__(self, board, paddle, ball):
 		self.board = board
-		self.paddle = paddle
-		self.ball = ball
 
 	def update(self):
 		"Update the state of the paddle by looking at the game state"
@@ -24,26 +22,29 @@ class PCFollower(PaddleController):
 
 	def update(self):
 
-		bx,by = self.ball.position
-		py = self.paddle.y
+		board = self.board
+		bx, by = board.get_ball_position(self)
+		py = board.get_player_position(self)
+		top_speed = board.get_paddle_top_speed(self)
 
 		if py < by:
-			vy = self.paddle.top_speed
+			vy = top_speed
 		elif py > by:
-			vy = -self.paddle.top_speed
+			vy = - top_speed
 		else:
 			vy = 0
 	
-		self.paddle.set_speed(vy)
-		self.paddle.update()
+		board.set_player_speed(self, vy)
 
 class PCKeyboard(PaddleController):
 
 	def update(self):
-		vy = self.paddle.vy
+		board = self.board
+		vy = board.get_player_speed(self)
 
-		up = -self.paddle.top_speed
-		down = self.paddle.top_speed
+		top = board.get_paddle_top_speed(self)
+		up = -top
+		down = top
 
 		#events = pygame.event.get()
 		events = self.board.events
@@ -57,169 +58,172 @@ class PCKeyboard(PaddleController):
 				if event.key == pygame.K_UP and vy == up: vy = 0
 				elif event.key == pygame.K_DOWN and vy == down: vy = 0
 	
-		self.paddle.set_speed(vy)
-		self.paddle.update()
+		board.set_player_speed(self, vy)
 
-class PC1(PaddleController):
-
-	def __init__(self, board, paddle, ball):
-		super().__init__(board, paddle, ball)
-
-		q = np.random.uniform(size=(2, 2))
-		#q = np.zeros((2, 2)) + 1
-
-		# Normalize action probability so that it sums one
-		#q = q / q.sum(axis=0)
-
-		self.q = q
-
-		#print(self.q)
-
-		self.actions = ['up', 'down']
-
-		self.alpha = 0.1
-		self.gamma = 0.5
-		self.doing = 'up'
-
-	def reward(self, s, a):
-		who = self.board.player_scored
-		me = self.paddle.side
-		if who != None:
-			if who != me:
-				return -1
-			#else:
-			#	return -1
-
-		if self.paddle.status == 'collision':
-			return 1
-
-		
-
-		#if s == 'above':
-		#	if a == 'up': return 1
-		#	else:
-		#		return -1
-		#elif s == 'below':
-		#	if a == 'down': return 1
-		#	else:
-		#		return -1
-		#elif s == 'middle':
-		#	if a == 'stop': return 1
-		#	else:
-		#		return -1
-		#return 0
-		return 0
-
-	def do(self, a):
-		#print('Doing '+a)
-		action = self.actions[a]
-		self.doing = action
-		down = self.paddle.top_speed
-		up = -self.paddle.top_speed
-
-		if action == 'up':
-			self.paddle.set_speed(up)
-		elif action == 'down':
-			self.paddle.set_speed(down)
-
-		self.paddle.update()
-
-	def get_state(self):
-		bx, by = self.ball.position
-		py = self.paddle.y
-
-		# Above
-		if by < py: return 0
-
-		# Below
-		elif by >= py: return 1
-
-	def update(self):
-
-		#print(self.q)
-		s0 = self.get_state()
-		me = self.paddle.side
-
-		q = self.q
-		#action = np.random.choice(self.actions, 1, p=q[s0,:])
-		#a = self.actions.index(action)
-
-		# Select the action with the maximum Q
-		a = np.argmax(q, axis=1)[s0]
-		r = self.reward(s0, a)
-
-
-		# Take the action (we move the paddle here!)
-		self.do(a)
-
-		s1 = self.get_state()
-
-
-
-		alpha = self.alpha
-		gamma = self.gamma
-
-
-		# The best estimate should be the NEXT state after the update
-		best_estimate = np.argmax(q[s1, :])
-
-		prev_qsa = q[s0, a]
-
-		#q[s, a] = (1-alpha) * q[s, a] + alpha * (r + q[s, a])
-		if r != 0:
-			q[s0, a] = (1-alpha) * q[s0, a] + alpha * (r + gamma * best_estimate)
-			#q[s, a] = max(q[s, a], 0.01)
-
-			#q = (q.T / q.T.sum(axis=0)).T
-		new_qsa = q[s0, a]
-
-		if r!= 0:
-			np.set_printoptions(precision=3)
-			print("Player {}".format(me))
-			#print("At q[{}, {}] from {:.2f} to {:.2f}".format(
-			#	s, a, prev_qsa, new_qsa))
-			print(self.q)
-			print("-------------------------")
-
-		self.q = q
-
-	def draw(self):
-		# Draw the action being taken
-
-		a = self.doing
-		p = self.paddle.rect
-		b = self.board.rect
-		w,h = p.size
-		side = self.paddle.side
-
-		sum_q0 = np.sum(self.q[0,:])
-		sum_q1 = np.sum(self.q[1,:])
-
-		w_up = h/2 * self.q[0,0]/sum_q0
-		h_up = h/2 * self.q[0,1]/sum_q0
-		up_rect = Rect((0,0), (w_up, h_up))
-
-		w_down = h/2 * self.q[1,1]/sum_q1
-		h_down = h/2 * self.q[1,0]/sum_q1
-		down_rect = Rect((0,0), (w_down, h_down))
-
-		if side == 'left':
-			up_rect.topleft = b.topleft
-			down_rect.bottomleft = b.bottomleft
-		else:
-			up_rect.topright = b.topright
-			down_rect.bottomright = b.bottomright
-
-		col = (255,0,0)
-		col_now = (0,255,0)
-		col_up = col
-		col_down = col
-
-		if a == 'up': col_up = col_now
-		elif a == 'down': col_down = col_now
-
-		pygame.draw.rect(self.board.surf, col_up, up_rect)
-		pygame.draw.rect(self.board.surf, col_down, down_rect)
+# Not used anymore
+#
+#class PC1(PaddleController):
+#
+#	# FIXME symmetry
+#
+#	def __init__(self, board, paddle, ball):
+#		super().__init__(board, paddle, ball)
+#
+#		q = np.random.uniform(size=(2, 2))
+#		#q = np.zeros((2, 2)) + 1
+#
+#		# Normalize action probability so that it sums one
+#		#q = q / q.sum(axis=0)
+#
+#		self.q = q
+#
+#		#print(self.q)
+#
+#		self.actions = ['up', 'down']
+#
+#		self.alpha = 0.1
+#		self.gamma = 0.5
+#		self.doing = 'up'
+#
+#	def reward(self, s, a):
+#		who = self.board.player_scored
+#		me = self.paddle.side
+#		if who != None:
+#			if who != me:
+#				return -1
+#			#else:
+#			#	return -1
+#
+#		if self.paddle.status == 'collision':
+#			return 1
+#
+#		
+#
+#		#if s == 'above':
+#		#	if a == 'up': return 1
+#		#	else:
+#		#		return -1
+#		#elif s == 'below':
+#		#	if a == 'down': return 1
+#		#	else:
+#		#		return -1
+#		#elif s == 'middle':
+#		#	if a == 'stop': return 1
+#		#	else:
+#		#		return -1
+#		#return 0
+#		return 0
+#
+#	def do(self, a):
+#		#print('Doing '+a)
+#		action = self.actions[a]
+#		self.doing = action
+#		down = self.paddle.top_speed
+#		up = -self.paddle.top_speed
+#
+#		if action == 'up':
+#			self.paddle.set_speed(up)
+#		elif action == 'down':
+#			self.paddle.set_speed(down)
+#
+#		self.paddle.update()
+#
+#	def get_state(self):
+#		bx, by = self.ball.position
+#		py = self.paddle.y
+#
+#		# Above
+#		if by < py: return 0
+#
+#		# Below
+#		elif by >= py: return 1
+#
+#	def update(self):
+#
+#		#print(self.q)
+#		s0 = self.get_state()
+#		me = self.paddle.side
+#
+#		q = self.q
+#		#action = np.random.choice(self.actions, 1, p=q[s0,:])
+#		#a = self.actions.index(action)
+#
+#		# Select the action with the maximum Q
+#		a = np.argmax(q, axis=1)[s0]
+#		r = self.reward(s0, a)
+#
+#
+#		# Take the action (we move the paddle here!)
+#		self.do(a)
+#
+#		s1 = self.get_state()
+#
+#
+#
+#		alpha = self.alpha
+#		gamma = self.gamma
+#
+#
+#		# The best estimate should be the NEXT state after the update
+#		best_estimate = np.argmax(q[s1, :])
+#
+#		prev_qsa = q[s0, a]
+#
+#		#q[s, a] = (1-alpha) * q[s, a] + alpha * (r + q[s, a])
+#		if r != 0:
+#			q[s0, a] = (1-alpha) * q[s0, a] + alpha * (r + gamma * best_estimate)
+#			#q[s, a] = max(q[s, a], 0.01)
+#
+#			#q = (q.T / q.T.sum(axis=0)).T
+#		new_qsa = q[s0, a]
+#
+#		if r!= 0:
+#			np.set_printoptions(precision=3)
+#			print("Player {}".format(me))
+#			#print("At q[{}, {}] from {:.2f} to {:.2f}".format(
+#			#	s, a, prev_qsa, new_qsa))
+#			print(self.q)
+#			print("-------------------------")
+#
+#		self.q = q
+#
+#	def draw(self):
+#		# Draw the action being taken
+#
+#		a = self.doing
+#		p = self.paddle.rect
+#		b = self.board.rect
+#		w,h = p.size
+#		side = self.paddle.side
+#
+#		sum_q0 = np.sum(self.q[0,:])
+#		sum_q1 = np.sum(self.q[1,:])
+#
+#		w_up = h/2 * self.q[0,0]/sum_q0
+#		h_up = h/2 * self.q[0,1]/sum_q0
+#		up_rect = Rect((0,0), (w_up, h_up))
+#
+#		w_down = h/2 * self.q[1,1]/sum_q1
+#		h_down = h/2 * self.q[1,0]/sum_q1
+#		down_rect = Rect((0,0), (w_down, h_down))
+#
+#		if side == 'left':
+#			up_rect.topleft = b.topleft
+#			down_rect.bottomleft = b.bottomleft
+#		else:
+#			up_rect.topright = b.topright
+#			down_rect.bottomright = b.bottomright
+#
+#		col = (255,0,0)
+#		col_now = (0,255,0)
+#		col_up = col
+#		col_down = col
+#
+#		if a == 'up': col_up = col_now
+#		elif a == 'down': col_down = col_now
+#
+#		pygame.draw.rect(self.board.surf, col_up, up_rect)
+#		pygame.draw.rect(self.board.surf, col_down, down_rect)
 
 
 
@@ -228,13 +232,13 @@ class PC2(PaddleController):
 	def __init__(self, board, paddle, ball):
 		super().__init__(board, paddle, ball)
 
-		self.pvbins	=		9	# Left paddle (me) y position
-		self.p2vbins =		7	# Right paddle (opponent) y position
+		self.pvbins	=		11	# Left paddle (me) y position
+		self.p2vbins =		11	# Right paddle (opponent) y position
 		self.hbins =		11	# Absolute ball x position
 		self.vbins =		11	# Absolute ball y position
 		self.bsbins =		5	# Ball speed magnitude
 		self.pbbins =		5	# Paddle zones
-		self.angle_bins =	18	# Ball direction angle
+		self.angle_bins =	36	# Ball direction angle
 
 		#self.angle_bins = int(360 / 60)
 
@@ -265,7 +269,7 @@ class PC2(PaddleController):
 
 		self.accum_r = 0.0
 		self.last_rewards = collections.deque(maxlen=500000)
-		self.last_states = collections.deque(maxlen=1000)
+		self.last_states = collections.deque(maxlen=30)
 		self.s0 = 0
 		self.a = 0
 		self.print_info = False
@@ -276,15 +280,17 @@ class PC2(PaddleController):
 		self.tic = 0
 
 	def reward(self, s, a):
-		who = self.board.player_scored
-		me = self.paddle.side
-		if who != None:
-			if who != me:
-				return -1
-			else:
-				return 1
+		board = self.board
+		who = board.get_player_scored(self)
+		status = board.get_paddle_status(self)
 
-		if self.paddle.status == 'collision':
+		if who != None:
+			if who == 'me':
+				return 1
+			else:
+				return -1
+
+		if status == 'collision':
 			return 0.1
 
 		return -0.001
@@ -292,14 +298,19 @@ class PC2(PaddleController):
 
 	def do(self, a):
 		#print('Doing '+a)
+		board = self.board
 		self.doing = a
-		down = self.paddle.top_speed
-		up = -self.paddle.top_speed
+
+		down = board.get_paddle_top_speed(self)
+		up = -down
+		speed = 0
 
 		if a == 0:
-			self.paddle.set_speed(up)
+			speed = up
 		elif a == 1:
-			self.paddle.set_speed(down)
+			speed = down
+			
+		board.set_player_speed(self, speed)
 
 		#self.paddle.update()
 
@@ -312,16 +323,29 @@ class PC2(PaddleController):
 
 		return s
 
-	def get_state(self):
-		bx, by = self.ball.position
-		bs = np.linalg.norm(self.ball.speed)
-		pcentery = self.paddle.rect.centery
-		pcenterx = self.paddle.rect.centerx
-		ptop = self.paddle.rect.top
-		pbottom = self.paddle.rect.bottom
+	def get_interval(self, raw_value, steps, min_value=0, max_value=1):
+		interval_size = (max_value - min_value)/steps
+		interval = int(min_value + (raw_value - min_value) / interval_size)
+		interval = max(0, min(steps - 1, interval))
 
-		p2centery = self.board.pr.rect.centery
-		p2centerx = self.board.pr.rect.centerx
+		return interval
+
+
+	def get_state(self):
+		board = self.board
+		bx, by = board.get_ball_position(self)
+		ball_speed = board.get_ball_speed(self)
+		ball_top_speed = board.get_ball_top_speed(self)
+		bs = np.linalg.norm(ball_speed)
+
+		pcentery = board.get_player_position(self)
+
+		paddle_rect = board.get_paddle_rect(self)
+		ptop = paddle_rect.top
+		pbottom = paddle_rect.bottom
+
+		# FIXME choose a better name for these variables
+		p2centery = self.board.get_player_position(self, me=False)
 
 		pvbins = self.pvbins
 		hbins = self.hbins
@@ -331,41 +355,24 @@ class PC2(PaddleController):
 		vbins = self.vbins
 		pbbins = self.pbbins
 
-		v = self.ball.speed
+		v = board.get_ball_speed(self)
 		vx, vy = v
 
 		# In which bin the paddle is located?
 		w,h = self.board.size
 
-		pvbin_h = h/pvbins
-		pvbin = int(pcentery / pvbin_h)
-		pvbin = max(0, min(pvbins-1,pvbin)) 
-
-		p2vbin_h = h/p2vbins
-		p2vbin = int(p2centery / p2vbin_h)
-		p2vbin = max(0, min(p2vbins-1,p2vbin)) 
-
-		hbin_w = w/hbins
-		hbin = int(bx / hbin_w)
-		hbin = max(0, min(hbins-1,hbin)) 
-
-		vbin_h = h/vbins
-		vbin = int(by / vbin_h)
-		vbin = max(0, min(vbins-1,vbin)) 
-
-		bsbin_h = self.ball.top_speed/bsbins
-		bsbin = int(bs / bsbin_h)
-		bsbin = max(0, min(bsbins-1,bsbin)) 
+		pvbin = self.get_interval(pcentery, pvbins, 0, h)
+		p2vbin = self.get_interval(p2centery, p2vbins, 0, h)
+		hbin = self.get_interval(bx, hbins, 0, w)
+		vbin = self.get_interval(bx, vbins, 0, h)
+		bsbin = self.get_interval(bs, bsbins, 0, ball_top_speed)
 
 		angle = np.arctan2(-vy, vx)
+
 		if angle < 0:
 			angle += 2*np.pi
-		angle_bin_step = (np.pi*2) / angle_bins
 
-		angle_bin = int(angle / angle_bin_step)
-		#angle_bin = max(0, min(self.angle_bins - 1, angle_bin)) 
-
-		#print(angle_bin)
+		angle_bin = self.get_interval(angle, angle_bins, 0, 2*np.pi)
 
 		if pbbins == 1:
 			pbbin = 0
@@ -375,7 +382,7 @@ class PC2(PaddleController):
 			elif by > pbottom:
 				pbbin = pbbins - 1
 			else:
-				pw,ph = self.paddle.size
+				pw,ph = paddle_rect.size
 
 				pbbin_h = ph / (pbbins - 2)
 				pbbin = 1 + int((by - ptop) / pbbin_h)
@@ -414,7 +421,6 @@ class PC2(PaddleController):
 		alpha = self.alpha
 		gamma = self.gamma
 		q = self.q
-		me = self.paddle.side
 
 		s1 = self.get_state()
 		if not s1 in self.last_states:
@@ -449,7 +455,7 @@ class PC2(PaddleController):
 		np.set_printoptions(precision=3)
 
 		if DEBUG and should_print:
-			print("---------- Q is being updated -----------".format(me))
+			print("---------- Q is being updated -----------")
 			print(q)
 			print("Action taken is {}".format(a))
 			print("Reward = {}".format(r))
@@ -469,7 +475,7 @@ class PC2(PaddleController):
 		if DEBUG and should_print:
 			print("Finally q[s0={}, a={}] = {}".format(s0, a, q[s0, a]))
 			print(q)
-			print("------------- End of update -------------".format(me))
+			print("------------- End of update -------------")
 		if should_print and (self.print_info or self.interval_print):
 			self.print_info = False
 			self.interval_print = False
@@ -496,22 +502,26 @@ class PC2(PaddleController):
 	def draw(self):
 		# Draw the action being taken
 
+		board = self.board
 		a = self.doing
-		p = self.paddle.rect
-		b = self.board.rect
+		p = board.get_paddle_rect(self)
+		b = board.rect
 		bw,bh = b.size
 		pw,ph = p.size
 		col = (200,200,0)
 
 		n = self.num_states
 		hbar = max(1, bh/n)
-		wbar = 40
 
 		# Draw the actual state little mark
-		x0 = p.x
+		dz = board.get_debug_zone(self)
+		dw, dh = dz.size
+		wbar = dw / 2 - 3
+		xc = dz.centerx
+		x0 = dz.x
 		y0 = int(self.s0 * bh/n)
-		rect = Rect((x0 - 7, y0), (5, hbar))
-		pygame.draw.rect(self.board.surf, (255,0,0), rect)
+		rect = Rect((x0, y0), (dw, hbar))
+		pygame.draw.rect(self.board.surf, (255,255,0), rect)
 
 		if not self.should_draw:
 			return
@@ -533,7 +543,7 @@ class PC2(PaddleController):
 			if np.all(self.q[st,:] == 0):
 				continue
 
-			x = p.x + pw + 5
+			x = xc
 			y = int(st * bh/n)
 
 			q = self.q
@@ -544,11 +554,11 @@ class PC2(PaddleController):
 			qa = q[st, max_a]
 
 			if max_a == 0:
-				X = x+wbar
+				X = x-3
 				w0 = int(np.abs(wbar * q0 / scale))
 				W = -w0
 			else:
-				X = 2+x+wbar
+				X = x+3
 				w1 = int(np.abs(wbar * q1 / scale))
 				W = w1
 
@@ -568,36 +578,50 @@ class PCPredictor(PaddleController):
 
 	def predict_collision(self):
 
+
 		# We try to compute the point in which the ball will collide with the
 		# paddle.
 
-		v = self.ball.speed
-		b = self.ball.position
-		p = self.paddle.rect.topleft #XXX Only for right player
+		board = self.board
+
+		v = board.get_ball_speed(self)
+		b = board.get_ball_position(self)
+		p = board.get_paddle_rect(self).topright
 
 		vx, vy = v
 		bx, by = b
 		px, py = p
-		w,h = self.board.size
+		w, h = self.board.size
 
-		if self.paddle.side != 'right':
-			print("Only for right players")
-			raise NotImplementedError()
+		# XXX Move this logic to the other side
 
+		#if self.paddle.side != 'right':
+		#	print("Only for right players")
+		#	raise NotImplementedError()
+
+		# If the ball is going towards the opponent, move the paddle to the
+		# center
+
+		if vx >= 0:
+			return h/2
+
+
+		# Otherwise compute the collision point
 		while True:
 
 			# Note that vy grows downwards!
 
-			angle = np.arctan(-vy/vx)
+			#angle = np.arctan(-vy/vx)
+			#print(vx, vy)
 
 			# Ball going upwards, chech top boundary
-			if angle > 0:
+			if vy < 0:
 
 				dx = by * vx / (-vy)
 				#print(dx)
 
 				# If we passed the paddle, abort the bounce
-				if bx + dx >= px:
+				if bx + dx <= px:
 					break
 
 				bx += dx
@@ -605,34 +629,35 @@ class PCPredictor(PaddleController):
 				vy = -vy
 
 			# Downwards
-			elif angle < 0:
+			elif vy > 0:
 
 				dx = (h - by) * vx / vy
 
 				# If we passed the paddle, abort the bounce
-				if bx + dx >= px:
+				if bx + dx <= px:
 					break
 
 				bx += dx
 				by = h
 				vy = -vy
 
-		angle = np.arctan(-vy/vx)
+		#angle = np.arctan(-vy/vx)
 
-		if bx < px:
+		if bx > px:
 			# Now advance the ball to collide with the paddle
 
-			# Easy
-			if angle == 0:
+			# Horizontal movement (rare)
+			if vy == 0:
 				bx = px
 
-			elif angle > 0:
-				# If we passed the paddle, abort the bounce
+			# Upwards
+			elif vy < 0:
 				dy = -vy * (px - bx) / vx
 				bx = px
 				by -= dy
+
+			# Downwards
 			else:
-				# If we passed the paddle, abort the bounce
 				dy = vy * (px - bx) / vx
 				bx = px
 				by += dy
@@ -640,222 +665,222 @@ class PCPredictor(PaddleController):
 
 		self.pc = (int(bx), int(by))
 		#print("Predicted collision {}".format(self.pc))
+		return by
 
 
 	def update(self):
 
-		self.predict_collision()
+		board = self.board
+		pred = self.predict_collision()
+		py = board.get_player_position(self)
 
-		w,h = self.board.size
-		bx,by = self.ball.position
-		vx,vy = self.ball.speed
-		py = self.paddle.y
-		_, pred = self.pc
+		paddle_top = board.get_paddle_top_speed(self)
+
+		vy = 0
 	
-		# Ball going left
-		if vx < 0:
-			pred = h/2
-
 		if py < pred:
-			vy = self.paddle.top_speed
+			vy = paddle_top
 		elif py > pred:
-			vy = -self.paddle.top_speed
-		else:
-			vy = 0
+			vy = -paddle_top
 	
-		self.paddle.set_speed(vy)
-		self.paddle.update()
+		board.set_player_speed(self, vy)
 
 	def draw(self):
 
-		p = self.paddle.rect
+		board = self.board
+		dz = board.get_debug_zone(self)
+		x = dz.centerx
 		cx, cy = self.pc
-		rect = Rect((cx - 10, cy - 5), (10, 10))
-		color = (50,0,0)
+		rect = Rect((x - 5, cy - 5), (10, 10))
+		color = (100,0,0)
+		#pygame.draw.rect(self.board.surf, (0,25,0), dz)
 		pygame.draw.rect(self.board.surf, color, rect)
 
-
-class PCPredictorLearn(PCPredictor):
-
-	def __init__(self, board, paddle, ball):
-		super().__init__(board, paddle, ball)
-
-		# Discretize ball angle (only towards the player)
-		self.angle_nbins = 1
-		self.pred_nbins = 5
-		self.paddle_nbins = 1
-		self.num_states = self.angle_nbins * self.pred_nbins * self.paddle_nbins
-		self.num_actions = self.pred_nbins
-
-		self.q = np.zeros((self.num_states, self.num_actions)) + 1
-		#self.q = np.random.uniform(size=(self.num_states, self.num_actions))
-		self.alpha = 0.1
-		self.gamma = 0.3
-		self.doing = 0
-
-		self.state = 0
-		self.target_bin = 0
-		self.last_state = -1
-
-	def get_state(self):
-
-		w,h = self.board.size
-		pcx, pcy = self.pc
-		px, py = self.paddle.rect.topleft
-		vx, vy = self.ball.speed
-
-		pred_bin_h = h / self.pred_nbins 
-		pred_bin = int(pcy / pred_bin_h)
-		pred_bin = max(0, min(self.pred_nbins - 1, pred_bin)) 
-
-		angle = np.arctan(-vy/vx)
-		angle_bin_step = np.pi / self.angle_nbins
-
-		# Angle to [0, pi]
-		angle += np.pi/2
-		angle_bin = int(angle / angle_bin_step)
-		angle_bin = max(0, min(self.angle_nbins - 1, angle_bin)) 
-
-		paddle_bin_h = h / self.paddle_nbins
-		paddle_bin = int(py / paddle_bin_h)
-		paddle_bin = max(0, min(self.paddle_nbins - 1, paddle_bin))
-
-		return pred_bin * self.angle_nbins * self.paddle_nbins + \
-				angle_bin * self.paddle_nbins + \
-				paddle_bin
-
-	def reward(self, s, a):
-		who = self.board.player_scored
-		me = self.paddle.side
-		if who != None:
-			if who != me:
-				return -1
-			#else:
-			#	return 1
-
-		if self.paddle.status == 'collision':
-			return 1
-
-		return 0
-
-	def do(self, a):
-		#print('Doing '+a)
-		#self.doing = a
-		down = self.paddle.top_speed
-		up = -self.paddle.top_speed
-
-		self.target_bin = a
-		update = (self.state != self.last_state)
-
-#		if update:
-
-#			print('Action = {}'.format(a))
-#			if a == 0:
-#				self.target_bin = max(0, self.target_bin - 1)
-#			elif a == 1:
-#				self.target_bin = min(self.paddle_nbins-1, self.target_bin + 1)
-#			elif a == 2:
-#				# target_bin is unchanged
-#				pass
-#			print(self.target_bin)
-
-
-		w,h = self.board.size
-		px, py = self.paddle.rect.topleft
-		#paddle_bin_h = h / self.paddle_nbins
-		#paddle_bin = int(py / paddle_bin_h)
-		#paddle_bin = max(0, min(self.paddle_nbins - 1, paddle_bin))
-
-		pred_bin_h = h / self.pred_nbins 
-		pred_bin = int(py / pred_bin_h)
-		pred_bin = max(0, min(self.pred_nbins - 1, pred_bin)) 
-
-		paddle_bin = pred_bin
-
-	#	if update:
-	#		print('Paddle is at bin {}, target is {}'.format(paddle_bin, self.target_bin))
-
-		#print('Paddle is at bin {}, target is {}'.format(paddle_bin, self.target_bin))
-
-		if paddle_bin < self.target_bin:
-			self.paddle.set_speed(down)
-		elif paddle_bin > self.target_bin:
-			self.paddle.set_speed(up)
-		else:
-			self.paddle.set_speed(0)
-
-		#print('Paddle speed = {}'.format(self.paddle.vy))
-
-		self.paddle.update()
-
-	def update(self):
-
-		self.predict_collision()
-
-		q = self.q
-
-		s = self.get_state()
-		self.state = s
-
-		a = np.argmax(q, axis=1)[s]
-		r = self.reward(s, a)
-		self.do(a)
-
-		s1 = self.get_state()
-		self.last_state = s1
-
-		# Wait until we reach another state to apply the learning step
-		if s == s1 and r == 0: return
-
-		alpha = self.alpha
-		gamma = self.gamma
-
-		# The best estimate should be the NEXT state after the update
-		qmax = np.argmax(q, axis=1)[s1]
-
-		#q[s, a] = (1-alpha) * q[s, a] + alpha * (r + q[s, a])
-		if r != 0:
-		#if r != 0 or s0 != s1:
-		#if True:
-			q[s, a] = (1-alpha) * q[s, a] + alpha * (r + gamma * qmax - q[s,a])
-			#q[s, a] = max(q[s, a], 0.01)
-
-			#q = (q.T / q.T.sum(axis=0)).T
-
-
-			self.q = q
-
-	def draw(self):
-		super().draw()
-		# Draw the action being taken
-
-		#a = self.doing
-		p = self.paddle.rect
-		b = self.board.rect
-		bw,bh = b.size
-		pw,ph = p.size
-		col = (70,0,0)
-
-		n = self.num_states
-		hbar = max(1, bh/n)
-		wbar = 40
-		for st in range(self.num_states):
-			if st == self.state:
-				color = (150,0,0)
-			else:
-				color = col
-			x = p.x + pw + 5
-			y = st * hbar
-			max_a = np.argmax(self.q[st,:])
-			na = self.num_actions
-			ws = int(wbar * max_a / na)
-
-			wsum = np.sum(self.q[st, :])
-			wm = int(wbar * max_a)
-			
-			#ws = max(1, int(wbar * self.q[st, 1]/wsum))
-
-			rect = Rect((x, y), (wm, hbar))
-			pygame.draw.rect(self.board.surf, (30,0,0), rect)
-			rect = Rect((x, y), (ws, hbar))
-			pygame.draw.rect(self.board.surf, color, rect)
+#
+# This controller was just an experiment, it's not necessary anymore.
+#
+#class PCPredictorLearn(PCPredictor):
+#	# FIXME symmetry
+#
+#	def __init__(self, board, paddle, ball):
+#		super().__init__(board, paddle, ball)
+#
+#		# Discretize ball angle (only towards the player)
+#		self.angle_nbins = 1
+#		self.pred_nbins = 5
+#		self.paddle_nbins = 1
+#		self.num_states = self.angle_nbins * self.pred_nbins * self.paddle_nbins
+#		self.num_actions = self.pred_nbins
+#
+#		self.q = np.zeros((self.num_states, self.num_actions)) + 1
+#		#self.q = np.random.uniform(size=(self.num_states, self.num_actions))
+#		self.alpha = 0.1
+#		self.gamma = 0.3
+#		self.doing = 0
+#
+#		self.state = 0
+#		self.target_bin = 0
+#		self.last_state = -1
+#
+#	def get_state(self):
+#
+#		w,h = self.board.size
+#		pcx, pcy = self.pc
+#		px, py = self.paddle.rect.topleft
+#		vx, vy = self.ball.speed
+#
+#		pred_bin_h = h / self.pred_nbins 
+#		pred_bin = int(pcy / pred_bin_h)
+#		pred_bin = max(0, min(self.pred_nbins - 1, pred_bin)) 
+#
+#		angle = np.arctan(-vy/vx)
+#		angle_bin_step = np.pi / self.angle_nbins
+#
+#		# Angle to [0, pi]
+#		angle += np.pi/2
+#		angle_bin = int(angle / angle_bin_step)
+#		angle_bin = max(0, min(self.angle_nbins - 1, angle_bin)) 
+#
+#		paddle_bin_h = h / self.paddle_nbins
+#		paddle_bin = int(py / paddle_bin_h)
+#		paddle_bin = max(0, min(self.paddle_nbins - 1, paddle_bin))
+#
+#		return pred_bin * self.angle_nbins * self.paddle_nbins + \
+#				angle_bin * self.paddle_nbins + \
+#				paddle_bin
+#
+#	def reward(self, s, a):
+#		who = self.board.player_scored
+#		me = self.paddle.side
+#		if who != None:
+#			if who != me:
+#				return -1
+#			#else:
+#			#	return 1
+#
+#		if self.paddle.status == 'collision':
+#			return 1
+#
+#		return 0
+#
+#	def do(self, a):
+#		#print('Doing '+a)
+#		#self.doing = a
+#		down = self.paddle.top_speed
+#		up = -self.paddle.top_speed
+#
+#		self.target_bin = a
+#		update = (self.state != self.last_state)
+#
+##		if update:
+#
+##			print('Action = {}'.format(a))
+##			if a == 0:
+##				self.target_bin = max(0, self.target_bin - 1)
+##			elif a == 1:
+##				self.target_bin = min(self.paddle_nbins-1, self.target_bin + 1)
+##			elif a == 2:
+##				# target_bin is unchanged
+##				pass
+##			print(self.target_bin)
+#
+#
+#		w,h = self.board.size
+#		px, py = self.paddle.rect.topleft
+#		#paddle_bin_h = h / self.paddle_nbins
+#		#paddle_bin = int(py / paddle_bin_h)
+#		#paddle_bin = max(0, min(self.paddle_nbins - 1, paddle_bin))
+#
+#		pred_bin_h = h / self.pred_nbins 
+#		pred_bin = int(py / pred_bin_h)
+#		pred_bin = max(0, min(self.pred_nbins - 1, pred_bin)) 
+#
+#		paddle_bin = pred_bin
+#
+#	#	if update:
+#	#		print('Paddle is at bin {}, target is {}'.format(paddle_bin, self.target_bin))
+#
+#		#print('Paddle is at bin {}, target is {}'.format(paddle_bin, self.target_bin))
+#
+#		if paddle_bin < self.target_bin:
+#			self.paddle.set_speed(down)
+#		elif paddle_bin > self.target_bin:
+#			self.paddle.set_speed(up)
+#		else:
+#			self.paddle.set_speed(0)
+#
+#		#print('Paddle speed = {}'.format(self.paddle.vy))
+#
+#		self.paddle.update()
+#
+#	def update(self):
+#
+#		self.predict_collision()
+#
+#		q = self.q
+#
+#		s = self.get_state()
+#		self.state = s
+#
+#		a = np.argmax(q, axis=1)[s]
+#		r = self.reward(s, a)
+#		self.do(a)
+#
+#		s1 = self.get_state()
+#		self.last_state = s1
+#
+#		# Wait until we reach another state to apply the learning step
+#		if s == s1 and r == 0: return
+#
+#		alpha = self.alpha
+#		gamma = self.gamma
+#
+#		# The best estimate should be the NEXT state after the update
+#		qmax = np.argmax(q, axis=1)[s1]
+#
+#		#q[s, a] = (1-alpha) * q[s, a] + alpha * (r + q[s, a])
+#		if r != 0:
+#		#if r != 0 or s0 != s1:
+#		#if True:
+#			q[s, a] = (1-alpha) * q[s, a] + alpha * (r + gamma * qmax - q[s,a])
+#			#q[s, a] = max(q[s, a], 0.01)
+#
+#			#q = (q.T / q.T.sum(axis=0)).T
+#
+#
+#			self.q = q
+#
+#	def draw(self):
+#		super().draw()
+#		# Draw the action being taken
+#
+#		#a = self.doing
+#		p = self.paddle.rect
+#		b = self.board.rect
+#		bw,bh = b.size
+#		pw,ph = p.size
+#		col = (70,0,0)
+#
+#		n = self.num_states
+#		hbar = max(1, bh/n)
+#		wbar = 40
+#		for st in range(self.num_states):
+#			if st == self.state:
+#				color = (150,0,0)
+#			else:
+#				color = col
+#			x = p.x + pw + 5
+#			y = st * hbar
+#			max_a = np.argmax(self.q[st,:])
+#			na = self.num_actions
+#			ws = int(wbar * max_a / na)
+#
+#			wsum = np.sum(self.q[st, :])
+#			wm = int(wbar * max_a)
+#			
+#			#ws = max(1, int(wbar * self.q[st, 1]/wsum))
+#
+#			rect = Rect((x, y), (wm, hbar))
+#			pygame.draw.rect(self.board.surf, (30,0,0), rect)
+#			rect = Rect((x, y), (ws, hbar))
+#			pygame.draw.rect(self.board.surf, color, rect)

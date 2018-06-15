@@ -12,7 +12,10 @@ FPS = 200
 
 def main():
 
-	print("Press f to toggle drawing (Fast mode)")
+	print("Press f to toggle (f)ast drawing")
+	print("Press d to toggle (d)ebug drawings")
+	print("Press p to (p)ause")
+	print("Press q to (q)uit")
 
 	pygame.font.init()
 	pygame.display.init()
@@ -20,16 +23,17 @@ def main():
 
 	screen = pygame.display.set_mode(SCREEN_SIZE)
 
+	# Left side
 	#cl = PCKeyboard
-	cl = PC2
 	#cl = PCFollower
+	cl = PCPredictor
 	#cl = PC2
-	#cl = PCFollower
-	#cr = PC2
+
+	# Roght side
 	#cr = PCKeyboard
-	cr = PCFollower
+	#cr = PCFollower
 	#cr = PCPredictor
-	#cr = PCPredictorLearn
+	cr = PC2
 
 	b = Board(screen, SCREEN_SIZE, cl, cr)
 	clock = pygame.time.Clock()

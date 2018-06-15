@@ -96,7 +96,7 @@ class Board(Sprite):
 		self.cr.update()
 
 		self.pl.update()
-		#self.pr.update()
+		self.pr.update()
 
 		if self.restart:
 			self.ball.restart()
@@ -132,7 +132,114 @@ class Board(Sprite):
 		self.restart = True
 		self.player_scored = player
 
+	def get_ball_position(self, controller):
+		if controller == self.cl:
+			return self.ball.position
 
+		# Mirror table
+		bx, by = self.ball.position
+		w, h = self.size
+
+		bx = w - bx - 1
+		
+		return np.array([bx, by])
+
+	def get_ball_speed(self, controller):
+		if controller == self.cl:
+			return self.ball.speed
+
+		# Mirror ball speed
+		vx, vy = self.ball.speed
+
+		return np.array([-vx, vy])
+
+	def get_ball_top_speed(self, controller):
+		return self.ball.top_speed
+
+	def get_player_position(self, controller, me=True):
+		if me:
+			if controller == self.cl:
+				return self.pl.y
+			else:
+				return self.pr.y
+		else:
+			if controller == self.cl:
+				return self.pr.y
+			else:
+				return self.pl.y
+
+	def set_player_speed(self, controller, speed):
+		if controller == self.cl:
+			self.pl.set_speed(speed)
+		else:
+			self.pr.set_speed(speed)
+
+	def get_player_speed(self, controller):
+		if controller == self.cl:
+			return self.pl.vy
+		else:
+			return self.pr.vy
+
+	def get_debug_zone(self, controller):
+		w,h = self.size
+		rect = Rect((0, PADDLE_MARGIN_Y), (PADDLE_MARGIN_X, h-2*PADDLE_MARGIN_Y))
+
+		if controller == self.cl:
+			rect.right = PADDLE_MARGIN_X
+			return rect
+			
+		else:
+			rect.left = w - PADDLE_MARGIN_X
+			return rect
+
+	def get_paddle_rect(self, controller):
+		if controller == self.cl:
+			return self.pl.rect
+
+		# Mirror paddle rect
+		size = (PADDLE_WIDTH, PADDLE_HEIGHT)
+		topleft = (PADDLE_MARGIN_X, PADDLE_MARGIN_Y)
+		rect = Rect(topleft, size)
+		rect.top = self.pr.rect.top
+		
+		return rect
+
+	def get_marker(self, controller):
+		ml = self.marker['left']
+		mr = self.marker['right']
+
+		if controller == self.cl:
+			return {'me':ml, 'opponent':mr}
+		else:
+			return {'me':mr, 'opponent':ml}
+
+	def get_player_scored(self, controller):
+		side = self.player_scored
+
+		if not side: return None
+
+		if controller == self.cl:
+			if side == 'left':
+				return 'me'
+			else:
+				return 'opponent'
+
+		else:
+			if side == 'right':
+				return 'me'
+			else:
+				return 'opponent'
+
+	def get_paddle_top_speed(self, controller):
+		return PADDLE_TOP_SPEED
+
+	def get_paddle_status(self, controller):
+		if controller == self.cl:
+			return self.pl.status
+		else:
+			return self.pr.status
+		
+			
 class Paddle(Sprite):
 	def __init__(self, board, hmargin, vmargin, side):
 		Sprite.__init__(self)
