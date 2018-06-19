@@ -308,9 +308,9 @@ class PC2(PaddleController):
 
 
 		#prev_q = q.copy()
-		np.set_printoptions(precision=3)
 
 		if DEBUG and should_print:
+			np.set_printoptions(precision=3)
 			print("---------- Q is being updated -----------")
 			print(q)
 			print("Action taken is {}".format(a))
