@@ -11,7 +11,9 @@ class DQN(Controller):
 
 		#raise NotImplementedError("DQN not ready")
 
-		self.gamma = 1
+		self.alpha = 0.3
+		self.gamma = 0.99
+		self.epsilon = 1.0
 
 		self.num_inputs = 6
 		self.num_actions = 2
@@ -19,20 +21,48 @@ class DQN(Controller):
 		self.input = keras.Input(
 				shape=(self.num_inputs + self.num_actions,))
 
-		self.hidden = keras.layers.Dense(1024)(self.input)
+		self.hidden1 = keras.layers.Dense(256, activation='relu')(self.input)
+		self.hidden2 = keras.layers.Dense(256, activation='relu')(self.hidden1)
+		self.hidden3 = keras.layers.Dense(256, activation='relu')(self.hidden2)
+		self.hidden4 = keras.layers.Dense(256, activation='relu')(self.hidden3)
 
 		# Estimated reward for each action
-		self.output = keras.layers.Dense(1)(self.hidden)
+		self.output = keras.layers.Dense(1)(self.hidden4)
 
 		self.model = keras.Model(inputs=self.input, outputs=self.output)
 
-		self.optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
+		#self.optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
+		#self.optimizer = keras.optimizers.RMSprop(lr=0.5e-4, rho=0.95, epsilon=0.01)
+		self.optimizer = keras.optimizers.SGD(lr=1e-4)
 		self.model.compile(self.optimizer, loss='mse')
+		#self.model.compile(loss='mse', optimizer='sgd')
+		self.iterations = 0
 
 		print(self.model.summary())
 
 		self.a = 0
+		self.prevQ = 0
 		self.state = [0] * self.num_inputs
+
+	def action_epsilon_greedy(self, a):
+		epsilon = self.epsilon
+
+		if np.random.random() < epsilon:
+			# Take random action
+			a = np.random.choice(self.num_actions)
+			
+
+		return a
+	
+	def update_epsilon(self):
+		ep = self.epsilon
+		if ep <= 0.1:
+			self.epsilon = 0.1
+			return
+
+		maxit = 20000
+		ep = (maxit - self.iterations) / maxit
+		self.epsilon = ep
 
 	def reward(self):
 		board = self.board
@@ -48,8 +78,8 @@ class DQN(Controller):
 		if status == 'collision':
 			return 0.1
 
-		return -0.001
-		#return 0
+		#return -0.001
+		return 0
 
 	def do(self, a):
 		#print('Doing '+a)
@@ -86,10 +116,13 @@ class DQN(Controller):
 		return [bpx, bpy, bsx, bsy, p0, p1]
 
 	def update(self):
+		self.iterations += 1
 
 		model = self.model
 		new_state = self.get_state()
 		r = self.reward()
+		gamma = self.gamma
+		alpha = self.alpha
 
 		in0 = np.matrix(new_state + [1, 0])
 		in1 = np.matrix(new_state + [0, 1])
@@ -97,10 +130,11 @@ class DQN(Controller):
 		predQ = np.array([model.predict(in0), model.predict(in1)])
 
 		maxQ = np.max(predQ)
+		prevQ = self.prevQ
 
-		out = np.matrix([r + self.gamma * maxQ])
+		out = np.matrix([prevQ + alpha * (r + gamma * maxQ - prevQ)])
 
-		#print(predQ[0,0])
+		#print(predQ)
 
 		# Fit the *previous* state not new_state
 
@@ -118,13 +152,27 @@ class DQN(Controller):
 
 
 
+		self.prevQ = maxQ
 		state = new_state
 		a = np.argmax(predQ)
+		a = self.action_epsilon_greedy(a)
 		self.do(a)
 		self.a = a
 		self.state = state
 
 		# Wait update from other objects
+
+		self.update_epsilon()
+
+	def save(self):
+		raise NotImplementedError()
+		# serialize model to JSON
+		model_json = model.to_json()
+		with open("model.json", "w") as json_file:
+			json_file.write(model_json)
+		# serialize weights to HDF5
+		model.save_weights("model.h5")
+		print("Saved model to disk")
 
 
 

@@ -13,9 +13,9 @@ DRAW = True
 #FPS = 20
 FPS = 200
 TRAIN_DIR = 'train'
-TRAINING = True
+TRAINING = False
 #TRAIN_TIME = 30 * 60 # 30 min for training
-TRAIN_TIME = 5*60
+TRAIN_TIME = 30*60
 
 # The controller in use
 # TODO: Select from cmdline
