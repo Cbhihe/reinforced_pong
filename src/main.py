@@ -13,9 +13,13 @@ DRAW = True
 #FPS = 20
 FPS = 200
 TRAIN_DIR = 'train'
-TRAINING = False
+TRAINING = True
 #TRAIN_TIME = 30 * 60 # 30 min for training
 TRAIN_TIME = 5*60
+
+# The controller in use
+# TODO: Select from cmdline
+CONTROLLER = control.DQN()
 
 
 def get_train_path(controller):
@@ -29,7 +33,7 @@ def load_controller(controller):
 	controller.restore(data)
 
 def tournament():
-	controllers = [control.SARSA1()]
+	controllers = [CONTROLLER]
 	name = [c.__class__.__name__ for c in controllers]
 
 	# Reference controller for training
@@ -73,11 +77,12 @@ def measure(left, right, maxmatches=20):
 	print(wins)
 
 
-def play(screen, controller, trainfile):
+def play(screen, controller, trainfile=None):
 
 	name = controller.__class__.__name__
-	data = restore(trainfile)
-	controller.restore(data)
+	if trainfile != None:
+		data = restore(trainfile)
+		controller.restore(data)
 
 	# Reference controller for playing
 	ref = control.Follower()
@@ -184,8 +189,9 @@ def main(training=False):
 		screen = pygame.display.set_mode(SCREEN_SIZE)
 
 		# Play the only trained controller
-		c = control.SARSA2()
-		trainfile = get_train_path(c)
+		c = CONTROLLER
+		#trainfile = get_train_path(c)
+		trainfile = None
 		play(screen, c, trainfile)
 
 
