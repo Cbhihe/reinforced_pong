@@ -1,6 +1,8 @@
 from pong import *
 from control import *
-import pygame, os, time
+import pygame, os, time, pickle
+import os.path
+import gzip
 
 # Center window
 os.environ['SDL_VIDEO_CENTERED'] = '1'
@@ -9,33 +11,44 @@ SCREEN_SIZE = (640, 480)
 DRAW = True
 #FPS = 20
 FPS = 200
+TRAIN_DIR = 'train'
+TRAINING = True
+TRAIN_TIME = 30 * 60 # 30 min for training
+#TRAIN_TIME = 30
 
-def main():
+def tournament():
+	controllers = [PC2()]
+	name = [c.__class__.__name__ for c in controllers]
 
-	print("Press f to toggle (f)ast drawing")
-	print("Press d to toggle (d)ebug drawings")
-	print("Press p to (p)ause")
-	print("Press q to (q)uit")
+	# Reference controller for training
+	ref = PCFollower()
+	ref_name = ref.__class__.__name__
 
-	pygame.font.init()
-	pygame.display.init()
-	pygame.display.set_caption('Skynet')
+	t = TRAIN_TIME
 
-	screen = pygame.display.set_mode(SCREEN_SIZE)
+	for c in controllers:
+		name = c.__class__.__name__
+		print('Training {}'.format(name))
+		b = Board(None, SCREEN_SIZE, c, ref, training=True)
+		cdata, _ = train(b, c, ref, t)
 
-	# Left side
-	#cl = PCKeyboard
-	#cl = PCFollower
-	cl = PCPredictor
-	#cl = PC2
+		savepath = os.path.join(TRAIN_DIR, name + '.data.gz')
+		save(cdata, savepath)
 
-	# Roght side
-	#cr = PCKeyboard
-	#cr = PCFollower
-	#cr = PCPredictor
-	cr = PC2
+		print("Trained data saved in {}".format(savepath))
 
-	b = Board(screen, SCREEN_SIZE, cl, cr)
+def play(screen, controller, trainfile):
+
+	name = controller.__class__.__name__
+	data = restore(trainfile)
+	controller.restore(data)
+
+	# Reference controller for playing
+	ref = PCFollower()
+	ref_name = ref.__class__.__name__
+
+	b = Board(screen, SCREEN_SIZE, controller, ref)
+	
 	clock = pygame.time.Clock()
 
 	frame = 1
@@ -44,12 +57,16 @@ def main():
 
 	draw = DRAW
 	tic = time.time()
+
+	print("Press f to toggle (f)ast drawing")
+	print("Press d to toggle (d)ebug drawings")
+	print("Press p to (p)ause")
+	print("Press q to (q)uit")
+
 	while b.run:
 
 		b.update(pause)
-
 		events = b.events
-
 
 		for event in events:
 			if event.type == pygame.KEYDOWN:
@@ -69,7 +86,6 @@ def main():
 		else:
 			delay = 10000
 
-
 		if not frame % delay and not draw:
 			toc = time.time()
 			fps = frame/(toc-tic)
@@ -80,6 +96,53 @@ def main():
 			frame = 1
 
 		frame += 1
+	
+
+def train(b, left, right, t):
+	"Train 2 agents by playing the game t seconds"
+
+
+	frame = 1
+
+	tic = time.time()
+	toc = tic + t
+	while time.time() < toc:
+		b.update(False)
+		frame += 1
+
+	print('Trained for {:.2f} s with {} frames and {} matches'.format(
+		time.time() - tic, frame, b.matches))
+
+	ldata = left.save()
+	rdata = right.save()
+
+	return (ldata, rdata)
+
+def save(data, fpath):
+	with gzip.open(fpath, 'wb') as f:
+		pickle.dump(data, f)
+
+def restore(fpath):
+	with gzip.open(fpath, 'rb') as f:
+		data = pickle.load(f)
+	
+	return data
+
+def main(training=False):
+
+	if training:
+		tournament()
+	else:
+		pygame.font.init()
+		pygame.display.init()
+		pygame.display.set_caption('skynet')
+		screen = pygame.display.set_mode(SCREEN_SIZE)
+
+		# Play the only trained controller
+		c = PC2()
+		trainfile = os.path.join(TRAIN_DIR, 'PC2.data.gz')
+		play(screen, c, trainfile)
+
 
 if __name__ == '__main__':
-	main()
+	main(TRAINING)

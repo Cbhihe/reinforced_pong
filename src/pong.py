@@ -20,7 +20,7 @@ SCORE_MARGIN_X = 150
 SCORE_MARGIN_Y = 50
 
 class Board(Sprite):
-	def __init__(self, screen, size, cl, cr):
+	def __init__(self, screen, size, cl, cr, training=False):
 		Sprite.__init__(self)
 		self.screen = screen
 		self.size = size
@@ -32,16 +32,21 @@ class Board(Sprite):
 
 		self.ball = Ball(self, BALL_DIAMETER)
 
-		self.cl = cl(self, self.pl, self.ball)
-		self.cr = cr(self, self.pr, self.ball)
+		cl.set_board(self)
+		cr.set_board(self)
 
+		self.cl = cl
+		self.cr = cr
+
+		self.matches = 0
 		self.marker = {'left':0, 'right':0}
 		self.restart = False
 		self.player_scored = None
 
-		# TODO: Use a good font
-		self.font = pygame.font.SysFont(None, 72)
+		self.font = None
 		self.run = True
+		self.training = training
+		self.events = []
 
 	def draw_net(self):
 		rect = self.surf.get_rect()
@@ -54,6 +59,10 @@ class Board(Sprite):
 		color = (g,g,g)
 		ml = str(self.marker['left'])
 		mr = str(self.marker['right'])
+
+		# TODO: Use a good font
+		if self.font == None:
+			self.font = pygame.font.SysFont(None, 72)
 		surf_l = self.font.render(ml, True, color)
 		surf_r = self.font.render(mr, True, color)
 
@@ -73,20 +82,22 @@ class Board(Sprite):
 
 	
 	def update(self, pause):
-		self.events = pygame.event.get()
-		for event in self.events:
-			if event.type == pygame.KEYDOWN:
-				if event.key == pygame.K_q:
-					#pygame.quit()
-					#exit()
-					self.run = False
-				if event.key == pygame.K_r:
-					# Restart counters
-					self.marker = {'left':0, 'right':0}
+		if not self.training:
+			self.events = pygame.event.get()
+			for event in self.events:
+				if event.type == pygame.KEYDOWN:
+					if event.key == pygame.K_q:
+						#pygame.quit()
+						#exit()
+						self.run = False
+					if event.key == pygame.K_r:
+						# Restart counters
+						self.marker = {'left':0, 'right':0}
 
 		if self.marker['left'] >= 100 or self.marker['right'] >= 100:
 			#print(self.marker)
 			self.marker = {'left':0, 'right':0}
+			self.matches += 1
 
 		if pause: return
 
