@@ -1,0 +1,5 @@
+Packages from AUR needed for keras:
+
+python-keras-preprocessing
+python-keras-applications
+python-keras
