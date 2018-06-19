@@ -1,5 +1,6 @@
 from pong import *
-from control import *
+
+import control
 import pygame, os, time, pickle
 import os.path
 import gzip
@@ -12,16 +13,27 @@ DRAW = True
 #FPS = 20
 FPS = 200
 TRAIN_DIR = 'train'
-TRAINING = True
-TRAIN_TIME = 30 * 60 # 30 min for training
-#TRAIN_TIME = 30
+TRAINING = False
+#TRAIN_TIME = 30 * 60 # 30 min for training
+TRAIN_TIME = 5*60
+
+
+def get_train_path(controller):
+	name = controller.__class__.__name__
+	fpath = os.path.join(TRAIN_DIR, name + '.data.gz')
+	return fpath
+
+def load_controller(controller):
+	fpath = get_train_path(controller)
+	data = restore(fpath)
+	controller.restore(data)
 
 def tournament():
-	controllers = [PC2()]
+	controllers = [control.SARSA1()]
 	name = [c.__class__.__name__ for c in controllers]
 
 	# Reference controller for training
-	ref = PCFollower()
+	ref = control.Follower()
 	ref_name = ref.__class__.__name__
 
 	t = TRAIN_TIME
@@ -29,13 +41,37 @@ def tournament():
 	for c in controllers:
 		name = c.__class__.__name__
 		print('Training {}'.format(name))
-		b = Board(None, SCREEN_SIZE, c, ref, training=True)
+		b = Board(None, SCREEN_SIZE, c, ref, display=False)
 		cdata, _ = train(b, c, ref, t)
 
 		savepath = os.path.join(TRAIN_DIR, name + '.data.gz')
 		save(cdata, savepath)
 
 		print("Trained data saved in {}".format(savepath))
+
+def measure(left, right, maxmatches=20):
+	"""A trained controller is played against a reference controller, and
+	performance is measured"""
+
+	b = Board(None, SCREEN_SIZE, left, right, display=False)
+	
+	frame = 1
+	delay = 10000
+	tic = time.time()
+
+	matches = -1
+
+	while b.matches < maxmatches:
+		if matches != b.matches:
+			matches = b.matches
+			print("Match {} of {}. Status: {}".format(
+				b.matches, maxmatches, b.win_matches))
+		b.update()
+		frame += 1
+
+	wins = b.win_matches
+	print(wins)
+
 
 def play(screen, controller, trainfile):
 
@@ -44,7 +80,7 @@ def play(screen, controller, trainfile):
 	controller.restore(data)
 
 	# Reference controller for playing
-	ref = PCFollower()
+	ref = control.Follower()
 	ref_name = ref.__class__.__name__
 
 	b = Board(screen, SCREEN_SIZE, controller, ref)
@@ -130,6 +166,15 @@ def restore(fpath):
 
 def main(training=False):
 
+	#left = control.QL2()
+	#right = control.Follower()
+
+	## Load trained controller
+	#load_controller(left)
+
+	#measure(left, right)
+	#return
+
 	if training:
 		tournament()
 	else:
@@ -139,8 +184,8 @@ def main(training=False):
 		screen = pygame.display.set_mode(SCREEN_SIZE)
 
 		# Play the only trained controller
-		c = PC2()
-		trainfile = os.path.join(TRAIN_DIR, 'PC2.data.gz')
+		c = control.SARSA2()
+		trainfile = get_train_path(c)
 		play(screen, c, trainfile)
 
 

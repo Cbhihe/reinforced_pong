@@ -20,7 +20,7 @@ SCORE_MARGIN_X = 150
 SCORE_MARGIN_Y = 50
 
 class Board(Sprite):
-	def __init__(self, screen, size, cl, cr, training=False):
+	def __init__(self, screen, size, cl, cr, display=True):
 		Sprite.__init__(self)
 		self.screen = screen
 		self.size = size
@@ -40,12 +40,13 @@ class Board(Sprite):
 
 		self.matches = 0
 		self.marker = {'left':0, 'right':0}
+		self.win_matches = {'left':0, 'right':0}
 		self.restart = False
 		self.player_scored = None
 
 		self.font = None
 		self.run = True
-		self.training = training
+		self.display = display
 		self.events = []
 
 	def draw_net(self):
@@ -81,8 +82,8 @@ class Board(Sprite):
 		self.surf.blit(surf_r, rect_r)
 
 	
-	def update(self, pause):
-		if not self.training:
+	def update(self, pause=False):
+		if self.display:
 			self.events = pygame.event.get()
 			for event in self.events:
 				if event.type == pygame.KEYDOWN:
@@ -95,7 +96,11 @@ class Board(Sprite):
 						self.marker = {'left':0, 'right':0}
 
 		if self.marker['left'] >= 100 or self.marker['right'] >= 100:
-			#print(self.marker)
+			if self.marker['left'] > self.marker['right']:
+				self.win_matches['left'] += 1
+			else:
+				self.win_matches['right'] += 1
+
 			self.marker = {'left':0, 'right':0}
 			self.matches += 1
 
