@@ -72,7 +72,7 @@ class QLd1(QLd):
 		self.epsilon = 0.0 # Ignored
 
 		# Decay parameters for epsilon
-		self.c1 = 1.0
+		self.c1 = 1.0 # Space removed here
 		self.c2 = 3
 
 class QLe1(QLe):
