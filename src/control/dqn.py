@@ -4,13 +4,15 @@ import pygame
 import numpy as np
 import sys,time
 
-# Keras seems to talk a lot in stderr...
-import keras
 
 class DQN(ControllerLog):
 
 	def __init__(self):
 		super().__init__()
+
+		if 'keras' not in sys.modules:
+			# Keras seems to talk a lot in stderr...
+			import keras
 
 		#raise NotImplementedError("DQN not ready")
 

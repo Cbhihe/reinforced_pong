@@ -466,6 +466,31 @@ class QLd(QL):
 		q[s0, a] = q[s0, a] + alpha / (1 + visits[s0,a]) * (r + gamma * q_max - q[s0, a])
 		self.q = q
 
+class QLe(QL):
+	"""Implements epsilon linar decay with the number of iterations"""
+	def __init__(self):
+		super().__init__()
+
+		self.epsilon = 1.0
+		self.epsilon_max = 1.0
+		self.epsilon_min = 0.1
+		self.epsilon_iterations = 2e6
+
+	def update_epsilon(self):
+		if self.iteration >= self.epsilon_iterations:
+			self.epsilon = self.epsilon_min
+			return
+
+		maxit = self.epsilon_iterations
+		portion = (maxit - self.iteration) / maxit
+		epsilon_diff = self.epsilon_max - self.epsilon_min
+		self.epsilon = self.epsilon_min + epsilon_diff * portion
+
+	def update(self):
+		super().update()
+		self.update_epsilon()
+
+
 class SARSA(QL):
 
 	def update_q(self, s0, a, s1, r):

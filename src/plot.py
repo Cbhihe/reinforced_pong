@@ -7,7 +7,7 @@ FIGDIR='fig'
 
 
 def plot_group_point_diff():
-	sarsa_controllers = ['QL1', 'QL2', 'SARSA1', 'SARSA2']
+	sarsa_controllers = ['QL1', 'QL2', 'QLe2', 'SARSA1', 'SARSA2', 'DQN1']
 	train_time = str(30*60)
 
 	for controller in sarsa_controllers:
@@ -24,14 +24,15 @@ def plot_group_point_diff():
 		denom = 1 + points_me + points_opp
 		point_diff = (points_me - points_opp)/denom
 
-		plt.plot(iteration[50:], point_diff[50:], label=controller)
+		plt.plot(iteration[20:], point_diff[20:], label=controller)
 
 	plt.title('With {} seconds of training'.format(train_time))
 	plt.xlabel('Iteration')
-	plt.ylabel('Normalized point difference')
+	plt.ylabel('Normalized score difference')
 	plt.legend()
+	plt.grid()
 
-	fig_fpath = os.path.join(FIGDIR, 'all-norm-point-diff.png')
+	fig_fpath = os.path.join(FIGDIR, 'all-norm-score-diff.png')
 	plt.savefig(fig_fpath)
 	plt.close()
 

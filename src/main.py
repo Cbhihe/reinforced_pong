@@ -5,22 +5,49 @@ import pygame, os, time, pickle, sys
 import os.path
 import gzip
 from plot import plot_all
+import argparse
 
 # Center window
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 SCREEN_SIZE = (640, 480)
 DRAW = True
-#FPS = 20
 FPS = 200
+
+
+# Default configuration: training mode for 30 min
 TRAIN_DIR = 'train'
 TRAINING = True
-#TRAIN_TIME = 30 * 60 # 30 min for training
-TRAIN_TIME = 5 * 60
+TRAIN_TIME = 30 * 60 # 30 min for training
+
 
 # The controller in use
-# TODO: Select from cmdline
-CONTROLLER = control.SARSA2()
+parser = argparse.ArgumentParser(description='Play or train a Pong game controller')
+
+parser.add_argument("-c", "--controller",
+	help="the name of the controller to use", type=str, required=True)
+
+parser.add_argument("-p", "--play", help="play the trained controller",
+	action="store_true")
+
+parser.add_argument("-t", "--time", help="time in seconds for training",
+	type=int, default=TRAIN_TIME)
+
+parser.add_argument("-f", "--file", help="file used to restore training data",
+	type=str)
+
+args = parser.parse_args()
+
+if args.play:
+	TRAINING = False
+
+TRAIN_TIME = args.time
+
+try:
+	CONTROLLER = globals()[args.controller]()
+except KeyError:
+	print("Controller '{}' not found".format(args.controller))
+	exit(1)
 
 
 def get_train_path(controller, train_time):
@@ -28,6 +55,23 @@ def get_train_path(controller, train_time):
 	train_time = str(train_time)
 	fpath = os.path.join(TRAIN_DIR, name, train_time, 'data.gz')
 	return fpath
+
+
+if args.file != None:
+	TRAIN_FPATH = args.file
+else:
+	TRAIN_FPATH = get_train_path(args.controller, args.time)
+
+
+
+if TRAINING:
+	print('Controller selected {}, train time {} seconds'.format(
+		args.controller, TRAIN_TIME))
+else:
+	print('Controller selected {}, play mode'.format(
+		args.controller))
+
+
 
 def load_controller(controller, train_time):
 	fpath = get_train_path(controller)
@@ -181,7 +225,7 @@ def restore(fpath):
 	
 	return data
 
-def main(training=False):
+def main():
 
 	#left = control.QL2()
 	#right = control.Follower()
@@ -192,21 +236,21 @@ def main(training=False):
 	#measure(left, right)
 	#return
 
-	if training:
+	if TRAINING:
 		tournament()
 	else:
 		pygame.font.init()
 		pygame.display.init()
-		pygame.display.set_caption('skynet')
+		pygame.display.set_caption('Controller {}'.format(args.controller))
 		screen = pygame.display.set_mode(SCREEN_SIZE)
 
 		# Play the only trained controller
 		c = CONTROLLER
 		#trainfile = get_train_path(c)
-		trainfile = None
-		play(screen, c, trainfile)
+		play(screen, c, TRAIN_FPATH)
 
 
 if __name__ == '__main__':
-	main(TRAINING)
-	plot_all()
+	main()
+	if TRAINING:
+		plot_all()
