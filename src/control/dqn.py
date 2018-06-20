@@ -2,6 +2,8 @@ from control.base import Controller
 
 import pygame
 import numpy as np
+
+# Keras seems to talk a lot in stderr...
 import keras
 
 class DQN(Controller):
@@ -132,7 +134,8 @@ class DQN(Controller):
 		maxQ = np.max(predQ)
 		prevQ = self.prevQ
 
-		out = np.matrix([prevQ + alpha * (r + gamma * maxQ - prevQ)])
+		out = np.matrix([r + gamma * maxQ])
+		#out = np.matrix([prevQ + alpha * (r + gamma * maxQ - prevQ)])
 
 		#print(predQ)
 

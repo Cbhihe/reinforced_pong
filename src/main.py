@@ -1,9 +1,10 @@
 from pong import *
 
 import control
-import pygame, os, time, pickle
+import pygame, os, time, pickle, sys
 import os.path
 import gzip
+from plot import plot_all
 
 # Center window
 os.environ['SDL_VIDEO_CENTERED'] = '1'
@@ -15,19 +16,20 @@ FPS = 200
 TRAIN_DIR = 'train'
 TRAINING = True
 #TRAIN_TIME = 30 * 60 # 30 min for training
-TRAIN_TIME = 30
+TRAIN_TIME = 5 * 60
 
 # The controller in use
 # TODO: Select from cmdline
-CONTROLLER = control.QLd1()
+CONTROLLER = control.SARSA2()
 
 
-def get_train_path(controller):
+def get_train_path(controller, train_time):
 	name = controller.__class__.__name__
-	fpath = os.path.join(TRAIN_DIR, name + '.data.gz')
+	train_time = str(train_time)
+	fpath = os.path.join(TRAIN_DIR, name, train_time, 'data.gz')
 	return fpath
 
-def load_controller(controller):
+def load_controller(controller, train_time):
 	fpath = get_train_path(controller)
 	data = restore(fpath)
 	controller.restore(data)
@@ -44,14 +46,24 @@ def tournament():
 
 	for c in controllers:
 		name = c.__class__.__name__
-		print('Training {}'.format(name))
+		print('Training {}'.format(name), file=sys.stderr)
 		b = Board(None, SCREEN_SIZE, c, ref, display=False)
-		cdata, _ = train(b, c, ref, t)
 
-		savepath = os.path.join(TRAIN_DIR, name + '.data.gz')
+		train_dir = '{}/{}/{}'.format(TRAIN_DIR, name, t)
+
+		if not os.path.exists(train_dir):
+		    os.makedirs(train_dir)
+
+		csv_file = os.path.join(train_dir, 'train.csv')
+
+		with open(csv_file, 'w') as csvfile:
+			c.log_file = csvfile
+			cdata, _ = train(b, c, ref, t)
+
+		savepath = os.path.join(train_dir, 'data.gz')
 		save(cdata, savepath)
 
-		print("Trained data saved in {}".format(savepath))
+		print("Trained data saved in {}".format(savepath), file=sys.stderr)
 
 def measure(left, right, maxmatches=20):
 	"""A trained controller is played against a reference controller, and
@@ -152,7 +164,7 @@ def train(b, left, right, t):
 		frame += 1
 
 	print('Trained for {:.2f} s with {} frames and {} matches'.format(
-		time.time() - tic, frame, b.matches))
+		time.time() - tic, frame, b.matches), file=sys.stderr)
 
 	ldata = left.save()
 	rdata = right.save()
@@ -197,3 +209,4 @@ def main(training=False):
 
 if __name__ == '__main__':
 	main(TRAINING)
+	plot_all()

@@ -41,6 +41,7 @@ class Board(Sprite):
 		self.matches = 0
 		self.marker = {'left':0, 'right':0}
 		self.win_matches = {'left':0, 'right':0}
+		self.accum_points = {'left':0, 'right':0}
 		self.restart = False
 		self.player_scored = None
 
@@ -145,8 +146,24 @@ class Board(Sprite):
 
 	def score(self, player):
 		self.marker[player] += 1
+		self.accum_points[player] += 1
 		self.restart = True
 		self.player_scored = player
+
+	def get_accum_points(self, controller, me=True):
+		pl = self.accum_points['left']
+		pr = self.accum_points['right']
+
+		if me:
+			if controller == self.cl:
+				return pl
+			else:
+				return pr
+		else:
+			if controller == self.cl:
+				return pr
+			else:
+				return pl
 
 	def get_ball_position(self, controller):
 		if controller == self.cl:

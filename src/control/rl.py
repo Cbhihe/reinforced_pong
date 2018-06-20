@@ -4,10 +4,37 @@ import pygame
 from pygame import Rect
 import numpy as np
 import collections, time
+import sys
 
 DEBUG = False
 
-class QL(Controller):
+class ControllerLog(Controller):
+	def __init__(self):
+		super().__init__()
+		self.log_now = False
+		self.log_interval = 1000 # Log only after these iterations
+		self.log_file = sys.stdout
+		self.iteration = 0
+		self.header_printed = False
+
+	def log_header(self):
+		raise NotImplementedError()
+
+	def log(self):
+		raise NotImplementedError()
+
+	def update(self):
+		if not self.header_printed:
+			self.log_header()
+			self.header_printed = True
+
+		if (self.iteration % self.log_interval) == 0:
+			self.log()
+
+		self.iteration += 1
+
+
+class QL(ControllerLog):
 
 	def __init__(self):
 		super().__init__()
@@ -27,7 +54,8 @@ class QL(Controller):
 
 		self.num_actions = 2
 
-		print('Number of states is {}'.format(self.num_states))
+		#print('Number of states is {}'.format(self.num_states),
+		#		file=sys.stderr)
 
 		#q = np.random.uniform(size=(self.num_states, 2))
 		q = np.zeros((self.num_states, self.num_actions))
@@ -48,16 +76,19 @@ class QL(Controller):
 		self.iteration = 0
 
 		self.accum_r = 0.0
-		self.last_rewards = collections.deque(maxlen=500000)
+		#self.last_rewards = collections.deque(maxlen=500000)
+		self.last_rewards = collections.deque(maxlen=1000)
 		self.last_states = collections.deque(maxlen=30)
 		self.s0 = 0
 		self.a = 0
+		self.r = 0 # Only needed for logging
 		self.print_info = False
 		self.should_draw = False
 		self.interval_print = True
 		self.print_iteration = 0
 		self.print_step = 5000
 		self.tic = 0
+		self.start_time = time.clock()
 
 		self.fps = 0
 
@@ -214,12 +245,42 @@ class QL(Controller):
 	def print_debug(self):
 		mean_r = np.mean(self.last_rewards)
 		print("r {:.3e} ({:.3e}), alpha {:.3e} iter {:.2e} ({:.1f} i/s)".format(
-			self.accum_r, mean_r, self.alpha, self.iteration, self.fps))
+			self.accum_r, mean_r, self.alpha, self.iteration, self.fps),
+			file=sys.stderr)
+
+	def log_header(self):
+		print("cputime iteration reward accum_reward mean_reward q0 alpha "+\
+				"gamma epsilon points_me points_opp",
+			file=self.log_file)
+
+	def log(self):
+		# Log all the interesting values
+
+		t = time.clock() - self.start_time # Running time CPU seconds
+		iteration = self.iteration
+
+		reward = self.r
+		mean_reward = np.mean(self.last_rewards)
+		accum_reward = self.accum_r
+
+		a = self.a
+		s0 = self.s0
+		q0 = self.q[s0, a]
+
+		alpha = self.alpha
+		gamma = self.gamma
+		epsilon = self.epsilon
+
+		points_me = self.board.get_accum_points(self, me=True)
+		points_op = self.board.get_accum_points(self, me=False)
+
+		print("{:.4e} {:.4e} {:.4e} {:.4e} {:.4e} {:.4e} {:.4e} {:.4e} {:.4e} {} {}".format(
+			t, iteration, reward, accum_reward, mean_reward, q0, alpha, gamma,
+			epsilon, points_me, points_op),
+			file=self.log_file)
 
 	def update(self):
 
-		self.iteration += 1
-		
 		# Finish last iteration first
 		s0 = self.s0
 		a = self.a
@@ -231,6 +292,7 @@ class QL(Controller):
 		if not s1 in self.last_states:
 			self.last_states.append(s1)
 		r = self.reward(s1, a)
+		self.r = r
 		self.accum_r += r
 		self.last_rewards.append(r)
 		q_max = np.max(q[s1, :])
@@ -304,6 +366,8 @@ class QL(Controller):
 		if should_print and (self.print_info or self.interval_print):
 			self.print_info = False
 			self.interval_print = False
+
+		super().update()
 
 	def draw(self):
 		# Draw the action being taken
