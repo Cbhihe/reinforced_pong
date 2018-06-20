@@ -5,6 +5,39 @@ import os
 TRAINDIR='train'
 FIGDIR='fig'
 
+
+def plot_group_point_diff():
+	sarsa_controllers = ['QL1', 'QL2', 'SARSA1', 'SARSA2']
+	train_time = str(30*60)
+
+	for controller in sarsa_controllers:
+		fpath = os.path.join(TRAINDIR, controller, train_time, "train.csv")
+
+		data = np.genfromtxt(fpath, skip_header=1, comments="#", delimiter=" ")
+
+		t = data[:,0]
+		iteration = data[:,1]
+		mean_reward = data[:,4]
+		points_me = data[:,9]
+		points_opp = data[:,10]
+
+		denom = 1 + points_me + points_opp
+		point_diff = (points_me - points_opp)/denom
+
+		plt.plot(iteration[50:], point_diff[50:], label=controller)
+
+	plt.title('With {} seconds of training'.format(train_time))
+	plt.xlabel('Iteration')
+	plt.ylabel('Normalized point difference')
+	plt.legend()
+
+	fig_fpath = os.path.join(FIGDIR, 'all-norm-point-diff.png')
+	plt.savefig(fig_fpath)
+	plt.close()
+
+		
+
+
 def plot(controller, train_time, fpath):
 
 	fig_dir = os.path.join(FIGDIR, controller, train_time)
@@ -33,7 +66,7 @@ def plot(controller, train_time, fpath):
 	plt.savefig(fig_fpath)
 	plt.close()
 
-	plt.plot(iteration, point_diff)
+	plt.plot(iteration[50:], point_diff[50:])
 	plt.title('Controller {} trained for {} seconds'.format(controller,
 		train_time))
 	plt.xlabel('Iteration')
@@ -64,4 +97,5 @@ def plot_all():
 
 if __name__ == '__main__':
 	print('Updating all plots with the training data from {}'.format(TRAINDIR))
-	plot_all()
+	#plot_all()
+	plot_group_point_diff()
