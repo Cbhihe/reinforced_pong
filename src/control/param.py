@@ -1,4 +1,5 @@
 from control.rl import *
+from control.dqn import *
 import numpy as np
 
 class QL1(QL):
@@ -120,4 +121,29 @@ class SARSA2(SARSA):
 		self.gamma = 1.0
 		self.epsilon = 0.0
 
+
+class DQN1(DQN):
+
+	def __init__(self):
+		super().__init__()
+
+		self.alpha = 0.3
+		self.gamma = 0.99
+		self.epsilon = 1.0
+
+		self.hidden1 = keras.layers.Dense(256, activation='relu')(self.input)
+		self.hidden2 = keras.layers.Dense(256, activation='relu')(self.hidden1)
+		#self.hidden3 = keras.layers.Dense(256, activation='relu')(self.hidden2)
+		#self.hidden4 = keras.layers.Dense(256, activation='relu')(self.hidden3)
+
+		# Estimated reward for each action
+		self.output = keras.layers.Dense(1)(self.hidden2)
+
+		self.model = keras.Model(inputs=self.input, outputs=self.output)
+
+		#self.optimizer = keras.optimizers.RMSprop(lr=0.00025, rho=0.95, epsilon=0.01)
+		#self.optimizer = keras.optimizers.RMSprop(lr=0.5e-4, rho=0.95, epsilon=0.01)
+		self.optimizer = keras.optimizers.SGD(lr=1e-4)
+		self.model.compile(self.optimizer, loss='mse')
+		#self.model.compile(loss='mse', optimizer='sgd')
 

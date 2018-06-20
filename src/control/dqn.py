@@ -1,12 +1,13 @@
-from control.base import Controller
+from control.base import *
 
 import pygame
 import numpy as np
+import sys,time
 
 # Keras seems to talk a lot in stderr...
 import keras
 
-class DQN(Controller):
+class DQN(ControllerLog):
 
 	def __init__(self):
 		super().__init__()
@@ -25,11 +26,11 @@ class DQN(Controller):
 
 		self.hidden1 = keras.layers.Dense(256, activation='relu')(self.input)
 		self.hidden2 = keras.layers.Dense(256, activation='relu')(self.hidden1)
-		self.hidden3 = keras.layers.Dense(256, activation='relu')(self.hidden2)
-		self.hidden4 = keras.layers.Dense(256, activation='relu')(self.hidden3)
+		#self.hidden3 = keras.layers.Dense(256, activation='relu')(self.hidden2)
+		#self.hidden4 = keras.layers.Dense(256, activation='relu')(self.hidden3)
 
 		# Estimated reward for each action
-		self.output = keras.layers.Dense(1)(self.hidden4)
+		self.output = keras.layers.Dense(1)(self.hidden2)
 
 		self.model = keras.Model(inputs=self.input, outputs=self.output)
 
@@ -40,11 +41,40 @@ class DQN(Controller):
 		#self.model.compile(loss='mse', optimizer='sgd')
 		self.iterations = 0
 
-		print(self.model.summary())
+		#print(self.model.summary())
 
 		self.a = 0
 		self.prevQ = 0
 		self.state = [0] * self.num_inputs
+
+	def log_header(self):
+		print("cputime iteration reward accum_reward mean_reward q0 alpha "+\
+				"gamma epsilon points_me points_opp",
+			file=self.log_file)
+
+	def log(self):
+		# Log all the interesting values
+
+		t = time.clock() - self.start_time # Running time CPU seconds
+		iteration = self.iteration
+
+		reward = 0
+		mean_reward = 0
+		accum_reward = 0
+
+		q0 = 0
+
+		alpha = self.alpha
+		gamma = self.gamma
+		epsilon = self.epsilon
+
+		points_me = self.board.get_accum_points(self, me=True)
+		points_op = self.board.get_accum_points(self, me=False)
+
+		print("{:.4e} {:.4e} {:.4e} {:.4e} {:.4e} {:.4e} {:.4e} {:.4e} {:.4e} {} {}".format(
+			t, iteration, reward, accum_reward, mean_reward, q0, alpha, gamma,
+			epsilon, points_me, points_op),
+			file=self.log_file)
 
 	def action_epsilon_greedy(self, a):
 		epsilon = self.epsilon
@@ -167,15 +197,17 @@ class DQN(Controller):
 
 		self.update_epsilon()
 
-	def save(self):
-		raise NotImplementedError()
-		# serialize model to JSON
-		model_json = model.to_json()
-		with open("model.json", "w") as json_file:
-			json_file.write(model_json)
-		# serialize weights to HDF5
-		model.save_weights("model.h5")
-		print("Saved model to disk")
+		super().update()
+
+#	def save(self):
+#		raise NotImplementedError()
+#		# serialize model to JSON
+#		model_json = model.to_json()
+#		with open("model.json", "w") as json_file:
+#			json_file.write(model_json)
+#		# serialize weights to HDF5
+#		model.save_weights("model.h5")
+#		print("Saved model to disk")
 
 
 

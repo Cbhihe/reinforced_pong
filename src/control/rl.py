@@ -1,4 +1,4 @@
-from control.base import Controller
+from control.base import *
 
 import pygame
 from pygame import Rect
@@ -7,31 +7,6 @@ import collections, time
 import sys
 
 DEBUG = False
-
-class ControllerLog(Controller):
-	def __init__(self):
-		super().__init__()
-		self.log_now = False
-		self.log_interval = 1000 # Log only after these iterations
-		self.log_file = sys.stdout
-		self.iteration = 0
-		self.header_printed = False
-
-	def log_header(self):
-		raise NotImplementedError()
-
-	def log(self):
-		raise NotImplementedError()
-
-	def update(self):
-		if not self.header_printed:
-			self.log_header()
-			self.header_printed = True
-
-		if (self.iteration % self.log_interval) == 0:
-			self.log()
-
-		self.iteration += 1
 
 
 class QL(ControllerLog):
@@ -88,7 +63,6 @@ class QL(ControllerLog):
 		self.print_iteration = 0
 		self.print_step = 5000
 		self.tic = 0
-		self.start_time = time.clock()
 
 		self.fps = 0
 
