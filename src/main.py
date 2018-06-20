@@ -13,6 +13,7 @@ os.environ['SDL_VIDEO_CENTERED'] = '1'
 SCREEN_SIZE = (640, 480)
 DRAW = True
 FPS = 200
+USE_KEYBOARD = False
 
 
 # Default configuration: training mode for 30 min
@@ -30,6 +31,9 @@ parser.add_argument("-c", "--controller",
 parser.add_argument("-p", "--play", help="play the trained controller",
 	action="store_true")
 
+parser.add_argument("-k", "--keyboard", help="use the keyboard when playing",
+	action="store_true")
+
 parser.add_argument("-t", "--time", help="time in seconds for training",
 	type=int, default=TRAIN_TIME)
 
@@ -40,6 +44,10 @@ args = parser.parse_args()
 
 if args.play:
 	TRAINING = False
+
+if args.keyboard:
+	USE_KEYBOARD = True
+	FPS = 60
 
 TRAIN_TIME = args.time
 
@@ -140,7 +148,11 @@ def play(screen, controller, trainfile=None):
 		controller.restore(data)
 
 	# Reference controller for playing
-	ref = control.Follower()
+	if USE_KEYBOARD:
+		ref = control.Keyboard()
+	else:
+		ref = control.Follower()
+
 	ref_name = ref.__class__.__name__
 
 	b = Board(screen, SCREEN_SIZE, controller, ref)
