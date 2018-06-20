@@ -60,7 +60,7 @@ def get_train_path(controller, train_time):
 if args.file != None:
 	TRAIN_FPATH = args.file
 else:
-	TRAIN_FPATH = get_train_path(args.controller, args.time)
+	TRAIN_FPATH = get_train_path(CONTROLLER, args.time)
 
 
 
@@ -70,7 +70,6 @@ if TRAINING:
 else:
 	print('Controller selected {}, play mode'.format(
 		args.controller))
-
 
 
 def load_controller(controller, train_time):
@@ -246,6 +245,8 @@ def main():
 
 		# Play the only trained controller
 		c = CONTROLLER
+		dev_null = open(os.devnull, 'w')
+		c.log_file = dev_null
 		#trainfile = get_train_path(c)
 		play(screen, c, TRAIN_FPATH)
 

@@ -7,7 +7,7 @@ FIGDIR='fig'
 
 
 def plot_group_point_diff():
-	sarsa_controllers = ['QL1', 'QL2', 'QLe2', 'SARSA1', 'SARSA2', 'DQN1']
+	sarsa_controllers = ['QL1', 'QL2', 'QLe2', 'QLe3', 'SARSA1', 'SARSA2', 'DQN1']
 	train_time = str(30*60)
 
 	for controller in sarsa_controllers:
