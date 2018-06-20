@@ -59,6 +59,8 @@ class QL(Controller):
 		self.print_step = 5000
 		self.tic = 0
 
+		self.fps = 0
+
 	def save(self):
 		t = (self.pvbins, self.p2vbins, self.hbins, self.vbins, self.bsbins,
 				self.pbbins, self.angle_bins, self.num_states, self.num_actions,
@@ -209,6 +211,11 @@ class QL(Controller):
 		q_max = np.max(q[s1, :])
 		self.q[s0, a] = q[s0, a] + alpha * (r + gamma * q_max - q[s0, a])
 
+	def print_debug(self):
+		mean_r = np.mean(self.last_rewards)
+		print("r {:.3e} ({:.3e}), alpha {:.3e} iter {:.2e} ({:.1f} i/s)".format(
+			self.accum_r, mean_r, self.alpha, self.iteration, self.fps))
+
 	def update(self):
 
 		self.iteration += 1
@@ -231,13 +238,12 @@ class QL(Controller):
 		# Update q
 		should_print = ((r != 0) or (s0 != s1))
 
-		speed = 0
 		if self.print_iteration < self.iteration:
 			self.print_iteration += self.print_step
 			self.interval_print = True
 			toc = time.clock()
 			elapsed = toc - self.tic
-			speed = self.print_step / elapsed
+			self.fps = self.print_step / elapsed
 			self.tic = time.clock()
 
 
@@ -275,12 +281,9 @@ class QL(Controller):
 			print("Finally q[s0={}, a={}] = {}".format(s0, a, q[s0, a]))
 			print(q)
 			print("------------- End of update -------------")
+
 		if should_print and (self.print_info or self.interval_print):
-			self.print_info = False
-			self.interval_print = False
-			mean_r = np.mean(self.last_rewards)
-			print("r {:.3e} ({:.3e}), alpha {:.3e} iter {:.2e} ({:.1f} i/s)".format(
-				self.accum_r, mean_r, self.alpha, self.iteration, speed))
+			self.print_debug()
 
 		# Shift time: t <- t+1
 
@@ -297,6 +300,10 @@ class QL(Controller):
 		self.alpha *= (1 - 1e-8)
 
 		#print("Alpha = {:e}".format(self.alpha))
+
+		if should_print and (self.print_info or self.interval_print):
+			self.print_info = False
+			self.interval_print = False
 
 	def draw(self):
 		# Draw the action being taken
@@ -368,6 +375,58 @@ class QL(Controller):
 			rect_bar = Rect((X, y), (W, hbar))
 			pygame.draw.rect(self.board.surf, color, rect_bar)
 
+class QLd(QL):
+	"""Implements epsilon decay with the number of iterations and alpha decay with
+	the number of visits to the pair (s,a)"""
+	def __init__(self):
+		super().__init__()
+
+		self.c1 = 1.0
+		self.c2 = 3
+		self.visits = np.zeros((self.num_states, self.num_actions))
+
+	def action_epsilon_greedy(self, state):
+		# Note: self.epsilon is ignored
+
+		# epsilon = self.epsilon
+
+		muq = np.mean(self.q[state, :])
+		varq = np.var(self.q[state, :])
+		epsilon = min(0.9 , self.c1 / ( self.iteration + 1.0 ) * \
+					  (varq / muq) ** (1 / self.c2) )
+
+		#if epsilon != 0.9:
+		#	print(epsilon)
+
+		if np.random.random() < epsilon:
+			# Take random action
+			a = np.random.choice(self.num_actions)
+		else:
+			#Take the best action
+			a = np.argmax(self.q[state, :])
+
+		# Save epsilon so we can print in the debug line
+		self.epsilon = epsilon
+
+		return a
+
+	def print_debug(self):
+		mean_r = np.mean(self.last_rewards)
+		print("r {:.3e} ({:.3e}), epsilon {:.2e} alpha {:.3e} iter {:.2e} ({:.1f} i/s)".format(
+			self.accum_r, mean_r, self.epsilon, self.alpha, self.iteration,
+			self.fps))
+
+	def update_q(self, s0, a, s1, r):
+		alpha = self.alpha
+		gamma = self.gamma
+		visits = self.visits
+		q = self.q
+		q_max = np.max(q[s1, :])
+
+		visits[s0,a] += 1
+
+		q[s0, a] = q[s0, a] + alpha / (1 + visits[s0,a]) * (r + gamma * q_max - q[s0, a])
+		self.q = q
 
 class SARSA(QL):
 

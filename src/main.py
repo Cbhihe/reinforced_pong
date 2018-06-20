@@ -13,13 +13,13 @@ DRAW = True
 #FPS = 20
 FPS = 200
 TRAIN_DIR = 'train'
-TRAINING = False
+TRAINING = True
 #TRAIN_TIME = 30 * 60 # 30 min for training
-TRAIN_TIME = 30*60
+TRAIN_TIME = 30
 
 # The controller in use
 # TODO: Select from cmdline
-CONTROLLER = control.DQN()
+CONTROLLER = control.QLd1()
 
 
 def get_train_path(controller):
