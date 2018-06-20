@@ -221,6 +221,9 @@ class SARSA2(SARSA):
 class DQN1(DQN):
 
 	def __init__(self):
+
+		import keras
+
 		super().__init__()
 
 		self.alpha = 0.3
