@@ -218,8 +218,14 @@ class QL(ControllerLog):
 
 	def print_debug(self):
 		mean_r = np.mean(self.last_rewards)
-		print("r {:.3e} ({:.3e}), alpha {:.3e} iter {:.2e} ({:.1f} i/s)".format(
-			self.accum_r, mean_r, self.alpha, self.iteration, self.fps),
+		points_me = self.board.get_accum_points(self, me=True)
+		points_opp = self.board.get_accum_points(self, me=False)
+
+		denom = 1 + points_me + points_opp
+		nsd = (points_me - points_opp)/denom
+
+		print("nsd {:.3e} r {:.3e} ({:.3e}), alpha {:.3e} iter {:.2e} ({:.1f} i/s)".format(
+			nsd, self.accum_r, mean_r, self.alpha, self.iteration, self.fps),
 			file=sys.stderr)
 
 	def log_header(self):
