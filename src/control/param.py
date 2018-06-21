@@ -50,59 +50,116 @@ class QL2(QL):
 
 class QLd1(QLd):
 
-	def __init__(self):
-		super().__init__()
+    def __init__(self):
+        super().__init__()
 
-		self.pvbins	=		5	# Left paddle (me) y position
-		self.p2vbins =		5	# Right paddle (opponent) y position
-		self.hbins =		5	# Absolute ball x position
-		self.vbins =		5	# Absolute ball y position
-		self.bsbins =		3	# Ball speed magnitude
-		self.pbbins =		3	# Paddle zones
-		self.angle_bins =	12	# Ball direction angle
-		#self.angle_bins = int(360 / 60)
+        self.pvbins    =        5    # Left paddle (me) y position
+        self.p2vbins =        5    # Right paddle (opponent) y position
+        self.hbins =        5    # Absolute ball x position
+        self.vbins =        5    # Absolute ball y position
+        self.bsbins =        3    # Ball speed magnitude
+        self.pbbins =        3    # Paddle zones
+        self.angle_bins =    12    # Ball direction angle
+        #self.angle_bins = int(360 / 60)
 
-		self.num_states = self.pvbins * self.p2vbins * self.vbins * self.hbins * \
-			self.bsbins * self.pbbins * self.angle_bins
-		self.num_actions = 2
-		self.q = np.zeros((self.num_states, self.num_actions))
+        self.num_states = self.pvbins * self.p2vbins * self.vbins * self.hbins * \
+            self.bsbins * self.pbbins * self.angle_bins
+        self.num_actions = 2
+        self.q = np.zeros((self.num_states, self.num_actions))
 
-		self.alpha = 0.4
-		self.gamma = 1.0
-		self.epsilon = 0.0 # Ignored
+        self.alpha = 0.4
+        self.gamma = 1.0
+        self.epsilon = 0.0 # Ignored
 
-		# Decay parameters for epsilon
-		self.c0 = 0.3
-		self.c1 = 0.3
-		self.c2 = 3
+        # Decay parameters for epsilon
+        self.c0 = 0.3
+        self.c1 = 0.3
+        self.c2 = 3
 
 class QLd2(QLd):
 
-	def __init__(self):
-		super().__init__()
+    def __init__(self):
+        super().__init__()
 
-		self.pvbins  =		5	 # Left paddle (me) y position
-		self.p2vbins =		5    # Right paddle (opponent) y position
-		self.hbins =		5	 # Absolute ball x position
-		self.vbins =		5	 # Absolute ball y position
-		self.bsbins =		3	  # Ball speed magnitude
-		self.pbbins =		3	  # Paddle zones
-		self.angle_bins =	12    # Ball direction angle
-		#self.angle_bins = int(360 / 60)
+        self.pvbins    =        5    # Left paddle (me) y position
+        self.p2vbins =        5    # Right paddle (opponent) y position
+        self.hbins =        5    # Absolute ball x position
+        self.vbins =        5    # Absolute ball y position
+        self.bsbins =        3    # Ball speed magnitude
+        self.pbbins =        3    # Paddle zones
+        self.angle_bins =    12    # Ball direction angle
+        #self.angle_bins = int(360 / 60)
 
-		self.num_states = self.pvbins * self.p2vbins * self.vbins * self.hbins * \
-			self.bsbins * self.pbbins * self.angle_bins
-		self.num_actions = 2
-		self.q = np.zeros((self.num_states, self.num_actions))
+        self.num_states = self.pvbins * self.p2vbins * self.vbins * self.hbins * \
+            self.bsbins * self.pbbins * self.angle_bins
+        self.num_actions = 2
+        self.q = np.zeros((self.num_states, self.num_actions))
 
-		self.alpha = 0.4
-		self.gamma = 1.0
-		self.epsilon = 0.0 # Ignored
+        self.alpha = 0.4
+        self.gamma = 1.0
+        self.epsilon = 0.0 # Ignored
 
-		# Decay parameters for epsilon
-		self.c0 = 0.3
-		self.c1 = 0.1
-		self.c2 = 3
+        # Decay parameters for epsilon
+        self.c0 = 0.3
+        self.c1 = 0.1
+        self.c2 = 3
+
+class QLd3(QLd):
+
+    def __init__(self):
+        super().__init__()
+
+        self.pvbins    =        5    # Left paddle (me) y position
+        self.p2vbins =        5    # Right paddle (opponent) y position
+        self.hbins =        5    # Absolute ball x position
+        self.vbins =        5    # Absolute ball y position
+        self.bsbins =        3    # Ball speed magnitude
+        self.pbbins =        3    # Paddle zones
+        self.angle_bins =    12    # Ball direction angle
+        #self.angle_bins = int(360 / 60)
+
+        self.num_states = self.pvbins * self.p2vbins * self.vbins * self.hbins * \
+            self.bsbins * self.pbbins * self.angle_bins
+        self.num_actions = 2
+        self.q = np.zeros((self.num_states, self.num_actions))
+
+        self.alpha = 0.4
+        self.gamma = 1.0
+        self.epsilon = 0.0 # Ignored
+
+        # Decay parameters for epsilon
+        self.c0 = 0.1
+        self.c1 = 0.1
+        self.c2 = 3
+
+
+class QLd4(QLd):
+
+    def __init__(self):
+        super().__init__()
+
+        self.pvbins    =        5    # Left paddle (me) y position
+        self.p2vbins =        5    # Right paddle (opponent) y position
+        self.hbins =        5    # Absolute ball x position
+        self.vbins =        5    # Absolute ball y position
+        self.bsbins =        3    # Ball speed magnitude
+        self.pbbins =        3    # Paddle zones
+        self.angle_bins =    12    # Ball direction angle
+        #self.angle_bins = int(360 / 60)
+
+        self.num_states = self.pvbins * self.p2vbins * self.vbins * self.hbins * \
+            self.bsbins * self.pbbins * self.angle_bins
+        self.num_actions = 2
+        self.q = np.zeros((self.num_states, self.num_actions))
+
+        self.alpha = 0.4
+        self.gamma = 1.0
+        self.epsilon = 0.0 # Ignored
+
+        # Decay parameters for epsilon
+        self.c0 = 0.1
+        self.c1 = 0.1
+        self.c2 = 1.5
 
 class QLe1(QLe):
 
